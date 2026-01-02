@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model projects {
+  ProjectID   Int         @id @default(autoincrement())
+  ProjectName String      @db.VarChar(100)
+  Description String?     @db.VarChar(255)
+  CreatedBy   Int?
+  CreatedAt   DateTime?   @default(now()) @db.DateTime(0)
+  users       users?      @relation(fields: [CreatedBy], references: [UserID], onDelete: NoAction, onUpdate: NoAction, map: "projects_ibfk_1")
+  tasklists   tasklists[]
+
+  @@index([CreatedBy], map: "CreatedBy")
+}
+
+model roles {
+  RoleID    Int         @id @default(autoincrement())
+  RoleName  String      @unique(map: "RoleName") @db.VarChar(50)
+  userroles userroles[]
+}
+
+model taskcomments {
+  CommentID   Int       @id @default(autoincrement())
+  TaskID      Int?
+  UserID      Int?
+  CommentText String    @db.VarChar(255)
+  CreatedAt   DateTime? @default(now()) @db.DateTime(0)
+  tasks       tasks?    @relation(fields: [TaskID], references: [TaskID], onDelete: NoAction, onUpdate: NoAction, map: "taskcomments_ibfk_1")
+  users       users?    @relation(fields: [UserID], references: [UserID], onDelete: NoAction, onUpdate: NoAction, map: "taskcomments_ibfk_2")
+
+  @@index([TaskID], map: "TaskID")
+  @@index([UserID], map: "UserID")
+}
+
+model taskhistory {
+  HistoryID  Int       @id @default(autoincrement())
+  TaskID     Int?
+  ChangedBy  Int?
+  ChangeType String    @db.VarChar(50)
+  ChangeTime DateTime? @default(now()) @db.DateTime(0)
+  tasks      tasks?    @relation(fields: [TaskID], references: [TaskID], onDelete: NoAction, onUpdate: NoAction, map: "taskhistory_ibfk_1")
+  users      users?    @relation(fields: [ChangedBy], references: [UserID], onDelete: NoAction, onUpdate: NoAction, map: "taskhistory_ibfk_2")
+
+  @@index([ChangedBy], map: "ChangedBy")
+  @@index([TaskID], map: "TaskID")
+}
+
+model tasklists {
+  ListID    Int       @id @default(autoincrement())
+  ProjectID Int?
+  ListName  String    @db.VarChar(100)
+  projects  projects? @relation(fields: [ProjectID], references: [ProjectID], onDelete: NoAction, onUpdate: NoAction, map: "tasklists_ibfk_1")
+  tasks     tasks[]
+
+  @@index([ProjectID], map: "ProjectID")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model tasks {
+  TaskID       Int            @id @default(autoincrement())
+  ListID       Int?
+  AssignedTo   Int?
+  Title        String         @db.VarChar(100)
+  Description  String?        @db.VarChar(255)
+  Priority     String?        @db.VarChar(10)
+  Status       String?        @db.VarChar(20)
+  DueDate      DateTime?      @db.Date
+  CreatedAt    DateTime?      @default(now()) @db.DateTime(0)
+  taskcomments taskcomments[]
+  taskhistory  taskhistory[]
+  tasklists    tasklists?     @relation(fields: [ListID], references: [ListID], onDelete: NoAction, onUpdate: NoAction, map: "tasks_ibfk_1")
+  users        users?         @relation(fields: [AssignedTo], references: [UserID], onDelete: NoAction, onUpdate: NoAction, map: "tasks_ibfk_2")
+
+  @@index([AssignedTo], map: "AssignedTo")
+  @@index([ListID], map: "ListID")
+}
+
+model userroles {
+  UserRoleID Int    @id @default(autoincrement())
+  UserID     Int?
+  RoleID     Int?
+  users      users? @relation(fields: [UserID], references: [UserID], onDelete: NoAction, onUpdate: NoAction, map: "userroles_ibfk_1")
+  roles      roles? @relation(fields: [RoleID], references: [RoleID], onDelete: NoAction, onUpdate: NoAction, map: "userroles_ibfk_2")
+
+  @@index([RoleID], map: "RoleID")
+  @@index([UserID], map: "UserID")
+}
+
+model users {
+  UserID       Int            @id @default(autoincrement())
+  UserName     String         @unique(map: "UserName") @db.VarChar(50)
+  Email        String         @unique(map: "Email") @db.VarChar(100)
+  PasswordHash String         @db.VarChar(255)
+  CreatedAt    DateTime?      @default(now()) @db.DateTime(0)
+  projects     projects[]
+  taskcomments taskcomments[]
+  taskhistory  taskhistory[]
+  tasks        tasks[]
+  userroles    userroles[]
+}
