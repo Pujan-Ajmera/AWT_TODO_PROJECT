@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Bell, Search, User } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LogoutButton } from "@/components/auth/logout-button";
 
 export function Navbar() {
     return (
@@ -31,6 +32,8 @@ export function Navbar() {
                 </button>
 
                 <div className="h-8 w-[1px] bg-border" />
+
+                <LogoutButton />
 
                 <button className="flex items-center gap-2 rounded-full border p-1 pr-3 hover:bg-muted transition-colors">
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary">

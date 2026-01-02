@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { LogoutButton } from "@/components/auth/logout-button";
 import {
   ArrowRight,
   CheckCircle2,
@@ -7,7 +9,10 @@ import {
   Zap
 } from "lucide-react";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const cookieStore = await cookies();
+  const session = cookieStore.get("user_session");
+
   return (
     <div className="flex min-h-screen flex-col bg-white">
       {/* Navigation */}
@@ -20,15 +25,29 @@ export default function LandingPage() {
             <span className="text-2xl font-bold tracking-tight">TodoApp</span>
           </Link>
           <div className="flex items-center gap-6">
-            <Link href="/login" className="text-sm font-medium text-zinc-600 hover:text-black transition-colors">
-              Sign In
-            </Link>
-            <Link
-              href="/register"
-              className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white shadow-lg hover:opacity-90 transition-opacity"
-            >
-              Get Started
-            </Link>
+            {!session ? (
+              <>
+                <Link href="/login" className="text-sm font-medium text-zinc-600 hover:text-black transition-colors">
+                  Sign In
+                </Link>
+                <Link
+                  href="/register"
+                  className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white shadow-lg hover:opacity-90 transition-opacity"
+                >
+                  Get Started
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/home"
+                  className="text-sm font-medium text-zinc-600 hover:text-black transition-colors"
+                >
+                  Dashboard
+                </Link>
+                <LogoutButton />
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -49,19 +68,31 @@ export default function LandingPage() {
               A high-performance task management system designed for speed, clarity, and focus. Built with Next.js and Prisma for the modern professional.
             </p>
             <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row animate-in fade-in slide-in-from-bottom-10 duration-1000 fill-mode-both">
-              <Link
-                href="/login"
-                className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-black px-8 text-lg font-semibold text-white shadow-2xl hover:opacity-90 transition-all sm:w-auto"
-              >
-                Sign In
-                <ArrowRight className="h-5 w-5" />
-              </Link>
-              <Link
-                href="/register"
-                className="flex h-14 w-full items-center justify-center rounded-full border border-zinc-200 bg-white px-8 text-lg font-semibold text-black hover:bg-zinc-50 transition-all sm:w-auto"
-              >
-                Create Account
-              </Link>
+              {!session ? (
+                <>
+                  <Link
+                    href="/login"
+                    className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-black px-8 text-lg font-semibold text-white shadow-2xl hover:opacity-90 transition-all sm:w-auto"
+                  >
+                    Sign In
+                    <ArrowRight className="h-5 w-5" />
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="flex h-14 w-full items-center justify-center rounded-full border border-zinc-200 bg-white px-8 text-lg font-semibold text-black hover:bg-zinc-50 transition-all sm:w-auto"
+                  >
+                    Create Account
+                  </Link>
+                </>
+              ) : (
+                <Link
+                  href="/home"
+                  className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-black px-8 text-lg font-semibold text-white shadow-2xl hover:opacity-90 transition-all sm:w-auto"
+                >
+                  Go to Dashboard
+                  <ArrowRight className="h-5 w-5" />
+                </Link>
+              )}
             </div>
           </div>
         </section>
@@ -111,12 +142,21 @@ export default function LandingPage() {
               Join thousands of users who have streamlined their workflow with TodoApp.
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link
-                href="/register"
-                className="rounded-full bg-black px-10 py-4 text-lg font-bold text-white shadow-xl hover:opacity-90 transition-opacity"
-              >
-                Sign Up Now
-              </Link>
+              {!session ? (
+                <Link
+                  href="/register"
+                  className="rounded-full bg-black px-10 py-4 text-lg font-bold text-white shadow-xl hover:opacity-90 transition-opacity"
+                >
+                  Sign Up Now
+                </Link>
+              ) : (
+                <Link
+                  href="/home"
+                  className="rounded-full bg-black px-10 py-4 text-lg font-bold text-white shadow-xl hover:opacity-90 transition-opacity"
+                >
+                  Back to Dashboard
+                </Link>
+              )}
               <div className="flex items-center gap-2 text-sm font-medium text-zinc-500">
                 <CheckCircle2 className="h-5 w-5 text-green-500" />
                 No credit card required
