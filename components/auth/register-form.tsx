@@ -27,6 +27,7 @@ export function RegisterForm() {
                         name="first-name"
                         placeholder="John"
                         autoComplete="off"
+                        defaultValue={state?.firstName || ""}
                         required
                     />
                 </div>
@@ -40,6 +41,7 @@ export function RegisterForm() {
                         name="last-name"
                         placeholder="Doe"
                         autoComplete="off"
+                        defaultValue={state?.lastName || ""}
                     />
                 </div>
             </div>
@@ -54,6 +56,7 @@ export function RegisterForm() {
                     placeholder="m@example.com"
                     type="email"
                     autoComplete="off"
+                    defaultValue={state?.email || ""}
                     required
                 />
             </div>

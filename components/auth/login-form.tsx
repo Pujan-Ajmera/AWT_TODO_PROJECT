@@ -28,6 +28,7 @@ export function LoginForm() {
                     placeholder="m@example.com"
                     type="email"
                     autoComplete="off"
+                    defaultValue={state?.email || ""}
                     required
                 />
             </div>
