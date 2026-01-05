@@ -14,7 +14,7 @@ export default async function RootPage() {
   if (user) {
     // If logged in, show dashboard with its layout
     const projects = await prisma.projects.findMany({
-      orderBy: { ProjectName: 'asc' }
+      orderBy: { ProjectName: "asc" },
     });
 
     return (

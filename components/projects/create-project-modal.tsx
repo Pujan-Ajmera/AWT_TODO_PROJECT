@@ -25,17 +25,26 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
         setIsLoading(true);
         setError(null);
         try {
-            const formData = new FormData();
-            formData.append("name", name);
-            formData.append("description", description);
+            const response = await fetch("/api/projects", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    name,
+                    description,
+                }),
+            });
 
-            const result = await createProjectAction(formData);
-            if (result.success) {
+            if (response.ok) {
                 setName("");
                 setDescription("");
                 onClose();
+                // We might need to refresh the page or trigger a state update
+                window.location.reload();
             } else {
-                setError(result.error || "Failed to create project");
+                const data = await response.json();
+                setError(data.error || "Failed to create project");
             }
         } catch (err) {
             console.error("Project submission error:", err);

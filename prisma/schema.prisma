@@ -63,22 +63,39 @@ model tasklists {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model tasks {
-  TaskID       Int            @id @default(autoincrement())
-  ListID       Int?
-  AssignedTo   Int?
-  Title        String         @db.VarChar(100)
-  Description  String?        @db.VarChar(255)
-  Priority     String?        @db.VarChar(10)
-  Status       String?        @db.VarChar(20)
-  DueDate      DateTime?      @db.Date
-  CreatedAt    DateTime?      @default(now()) @db.DateTime(0)
-  taskcomments taskcomments[]
-  taskhistory  taskhistory[]
-  tasklists    tasklists?     @relation(fields: [ListID], references: [ListID], onDelete: NoAction, onUpdate: NoAction, map: "tasks_ibfk_1")
-  users        users?         @relation(fields: [AssignedTo], references: [UserID], onDelete: NoAction, onUpdate: NoAction, map: "tasks_ibfk_2")
+  TaskID          Int               @id @default(autoincrement())
+  ListID          Int?
+  AssignedTo      Int?
+  Title           String            @db.VarChar(100)
+  Description     String?           @db.VarChar(255)
+  Priority        String?           @db.VarChar(10)
+  Status          String?           @db.VarChar(20)
+  DueDate         DateTime?         @db.Date
+  CreatedAt       DateTime?         @default(now()) @db.DateTime(0)
+  taskcomments    taskcomments[]
+  taskhistory     taskhistory[]
+  taskattachments taskattachments[]
+  tasklists       tasklists?        @relation(fields: [ListID], references: [ListID], onDelete: NoAction, onUpdate: NoAction, map: "tasks_ibfk_1")
+  users           users?            @relation(fields: [AssignedTo], references: [UserID], onDelete: NoAction, onUpdate: NoAction, map: "tasks_ibfk_2")
 
   @@index([AssignedTo], map: "AssignedTo")
   @@index([ListID], map: "ListID")
+}
+
+model taskattachments {
+  AttachmentID Int       @id @default(autoincrement())
+  TaskID       Int?
+  FileName     String    @db.VarChar(255)
+  FilePath     String    @db.VarChar(255)
+  FileType     String?   @db.VarChar(50)
+  FileSize     Int?
+  UploadedBy   Int?
+  UploadedAt   DateTime? @default(now()) @db.DateTime(0)
+  tasks        tasks?    @relation(fields: [TaskID], references: [TaskID], onDelete: NoAction, onUpdate: NoAction, map: "taskattachments_ibfk_1")
+  users        users?    @relation(fields: [UploadedBy], references: [UserID], onDelete: NoAction, onUpdate: NoAction, map: "taskattachments_ibfk_2")
+
+  @@index([TaskID], map: "TaskID")
+  @@index([UploadedBy], map: "UploadedBy")
 }
 
 model userroles {
@@ -93,14 +110,15 @@ model userroles {
 }
 
 model users {
-  UserID       Int            @id @default(autoincrement())
-  UserName     String         @unique(map: "UserName") @db.VarChar(50)
-  Email        String         @unique(map: "Email") @db.VarChar(100)
-  PasswordHash String         @db.VarChar(255)
-  CreatedAt    DateTime?      @default(now()) @db.DateTime(0)
-  projects     projects[]
-  taskcomments taskcomments[]
-  taskhistory  taskhistory[]
-  tasks        tasks[]
-  userroles    userroles[]
+  UserID          Int               @id @default(autoincrement())
+  UserName        String            @unique(map: "UserName") @db.VarChar(50)
+  Email           String            @unique(map: "Email") @db.VarChar(100)
+  PasswordHash    String            @db.VarChar(255)
+  CreatedAt       DateTime?         @default(now()) @db.DateTime(0)
+  projects        projects[]
+  taskcomments    taskcomments[]
+  taskhistory     taskhistory[]
+  tasks           tasks[]
+  userroles       userroles[]
+  taskattachments taskattachments[]
 }

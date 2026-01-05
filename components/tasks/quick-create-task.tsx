@@ -18,20 +18,29 @@ export function QuickCreateTask() {
 
         setIsLoading(true);
         setError(null);
-        console.log("Submitting task:", title);
+        console.log("Submitting task via API:", title);
 
         try {
-            const formData = new FormData();
-            formData.append("title", title);
+            const response = await fetch("/api/tasks", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    title,
+                }),
+            });
 
-            const result = await createTaskAction(formData);
-            console.log("Task creation result:", result);
-
-            if (result.success) {
+            if (response.ok) {
+                const data = await response.json();
+                console.log("Task created successfully:", data);
                 setTitle("");
                 setIsExpanded(false);
+                // Refresh the page or trigger a data re-fetch
+                window.location.reload();
             } else {
-                setError(result.error || "Failed to create task");
+                const data = await response.json();
+                setError(data.error || "Failed to create task");
             }
         } catch (err) {
             console.error("Submission error:", err);

@@ -5,15 +5,20 @@ import {
     X,
     Clock,
     User,
-    Calendar,
-    Tag,
-    MessageSquare,
-    Send,
-    Trash2,
+    MoreHorizontal,
+    Plus,
+    Paperclip,
     CheckCircle2,
-    History,
-    MoreVertical,
-    Activity
+    AlertCircle,
+    Activity,
+    Trash2,
+    Send,
+    MessageCircle,
+    MessageSquare,
+    Tag,
+    Calendar,
+    Calendar as CalendarIcon,
+    History
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,35 +33,115 @@ interface TaskDetailSidebarProps {
 export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarProps) {
     const [comment, setComment] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [attachments, setAttachments] = useState<any[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
+
+    useEffect(() => {
+        if (task && isOpen) {
+            fetchAttachments();
+        }
+    }, [task, isOpen]);
+
+    const fetchAttachments = async () => {
+        try {
+            const response = await fetch(`/api/tasks/${task.TaskID}/attachments`);
+            if (response.ok) {
+                const data = await response.json();
+                setAttachments(data);
+            }
+        } catch (error) {
+            console.error("Fetch attachments error:", error);
+        }
+    };
 
     if (!task) return null;
 
-    const handleAddComment = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleAddComment = async () => {
         if (!comment.trim()) return;
 
         setIsSubmitting(true);
-        const result = await addCommentAction(task.TaskID, comment);
-        setIsSubmitting(false);
+        try {
+            const response = await fetch(`/api/tasks/${task.TaskID}/comments`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ content: comment }),
+            });
 
-        if (result.success) {
-            setComment("");
+            if (response.ok) {
+                setComment("");
+                // Optionally re-fetch task or reload
+                window.location.reload();
+            }
+        } catch (error) {
+            console.error("Add comment error:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const response = await fetch(`/api/tasks/${task.TaskID}/attachments`, {
+                method: "POST",
+                body: formData,
+            });
+
+            if (response.ok) {
+                fetchAttachments();
+            }
+        } catch (error) {
+            console.error("Upload error:", error);
+        } finally {
+            setIsUploading(false);
         }
     };
 
     const handleStatusUpdate = async (status: string) => {
-        await updateTaskStatusAction(task.TaskID, status);
+        try {
+            const response = await fetch(`/api/tasks/${task.TaskID}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ status }),
+            });
+
+            if (response.ok) {
+                window.location.reload();
+            }
+        } catch (error) {
+            console.error("Status update error:", error);
+        }
     };
 
     const handleDelete = async () => {
         if (!confirm(`Delete task "${task.Title}"?`)) return;
         setIsSubmitting(true);
-        const result = await deleteTaskAction(task.TaskID);
-        if (result.success) {
-            onClose();
-        } else {
+        try {
+            const response = await fetch(`/api/tasks/${task.TaskID}`, {
+                method: "DELETE",
+            });
+
+            if (response.ok) {
+                onClose();
+                window.location.reload();
+            } else {
+                const data = await response.json();
+                alert(data.error || "Failed to delete task");
+            }
+        } catch (error) {
+            console.error("Delete task error:", error);
+        } finally {
             setIsSubmitting(false);
-            alert(result.error || "Failed to delete task");
         }
     };
 
@@ -173,6 +258,39 @@ export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarPr
                         <p className="text-sm leading-relaxed text-muted-foreground font-medium bg-muted/20 p-4 rounded-2xl border border-dashed">
                             {task.Description || "No description provided. Click to add more details about this task."}
                         </p>
+                    </div>
+
+                    {/* Attachments */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Attachments ({attachments.length})</p>
+                            <label className="cursor-pointer">
+                                <input type="file" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
+                                <div className="flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">
+                                    <Plus className="h-3.5 w-3.5" />
+                                    {isUploading ? "Uploading..." : "Add File"}
+                                </div>
+                            </label>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            {attachments.map((file) => (
+                                <a
+                                    key={file.AttachmentID}
+                                    href={file.FilePath}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-3 p-3 rounded-xl border bg-muted/20 hover:bg-muted/40 transition-all group"
+                                >
+                                    <div className="h-8 w-8 rounded-lg bg-background flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
+                                        <Paperclip className="h-4 w-4" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-bold truncate">{file.FileName}</p>
+                                        <p className="text-[8px] font-black uppercase text-muted-foreground/60">{(file.FileSize / 1024).toFixed(1)} KB</p>
+                                    </div>
+                                </a>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Timeline / Activity */}

@@ -18,32 +18,50 @@ import { TaskItemActions } from "@/components/tasks/task-item-actions";
 export default async function MyTasksPage({
     searchParams,
 }: {
-    searchParams: Promise<{ status?: string }>;
+    searchParams: Promise<{ status?: string, search?: string, page?: string }>;
 }) {
     const user = await getCurrentUser();
     if (!user) redirect("/");
 
-    const { status } = await searchParams;
+    const { status, search, page } = await searchParams;
+    const currentPage = parseInt(page || "1");
+    const pageSize = 5;
 
-    const tasks = await prisma.tasks.findMany({
-        where: {
-            AssignedTo: user.userId,
-            Status: status ? status : undefined,
-        },
-        include: {
-            tasklists: {
-                include: {
-                    projects: {
-                        select: { ProjectName: true, ProjectID: true }
+    const where: any = {
+        AssignedTo: user.userId,
+    };
+
+    if (status) where.Status = status;
+    if (search) {
+        where.OR = [
+            { Title: { contains: search } },
+            { Description: { contains: search } }
+        ];
+    }
+
+    const [tasks, totalCount] = await Promise.all([
+        prisma.tasks.findMany({
+            where,
+            include: {
+                tasklists: {
+                    include: {
+                        projects: {
+                            select: { ProjectName: true, ProjectID: true }
+                        }
                     }
                 }
-            }
-        },
-        orderBy: [
-            { Status: "asc" },
-            { DueDate: "asc" }
-        ]
-    });
+            },
+            orderBy: [
+                { Status: "asc" },
+                { DueDate: "asc" }
+            ],
+            skip: (currentPage - 1) * pageSize,
+            take: pageSize,
+        }),
+        prisma.tasks.count({ where })
+    ]);
+
+    const totalPages = Math.ceil(totalCount / pageSize);
 
     const statusFilters = [
         { label: "All Tasks", value: "" },
@@ -61,26 +79,40 @@ export default async function MyTasksPage({
                     </h1>
                     <p className="text-muted-foreground text-lg">Focus on what's assigned to you.</p>
                 </div>
-                <div className="flex gap-2 bg-muted/30 p-1 rounded-2xl border border-border/50 backdrop-blur-md">
-                    {statusFilters.map((f) => (
-                        <Link
-                            key={f.label}
-                            href={f.value ? `/my-tasks?status=${f.value}` : "/my-tasks"}
-                            className={cn(
-                                "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                                (status === f.value || (!status && !f.value))
-                                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                                    : "hover:bg-muted text-muted-foreground"
-                            )}
-                        >
-                            {f.label}
-                        </Link>
-                    ))}
+                <div className="flex flex-col gap-4 items-end">
+                    <form action="/my-tasks" className="relative group w-full md:w-64">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
+                        <input
+                            type="text"
+                            name="search"
+                            defaultValue={search}
+                            placeholder="Search tasks..."
+                            className="h-10 w-full rounded-full border bg-muted/30 pl-10 pr-4 text-sm outline-none transition-all focus:bg-background focus:ring-4 focus:ring-primary/10"
+                        />
+                        {status && <input type="hidden" name="status" value={status} />}
+                    </form>
+                    <div className="flex gap-2 bg-muted/30 p-1 rounded-2xl border border-border/50 backdrop-blur-md">
+                        {statusFilters.map((f) => (
+                            <Link
+                                key={f.label}
+                                href={f.value ? `/my-tasks?status=${f.value}${search ? `&search=${search}` : ''}` : `/my-tasks${search ? `?search=${search}` : ''}`}
+                                className={cn(
+                                    "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+                                    (status === f.value || (!status && !f.value))
+                                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                                        : "hover:bg-muted text-muted-foreground"
+                                )}
+                            >
+                                {f.label}
+                            </Link>
+                        ))}
+                    </div>
                 </div>
             </header>
 
             <div className="space-y-4">
                 {tasks.map((task) => (
+                    // ... (existing task card content)
                     <div key={task.TaskID} className="group relative rounded-[2rem] border bg-card/50 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all duration-300 hover:shadow-xl hover:bg-card border-border/50 hover:border-primary/20 card-shadow">
                         <div className="flex items-center gap-6 flex-1">
                             <div className={cn(
@@ -144,6 +176,30 @@ export default async function MyTasksPage({
                         </div>
                     </div>
                 ))}
+
+                {tasks.length > 0 && totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-4 pt-6">
+                        <Link
+                            href={`/my-tasks?page=${currentPage - 1}${status ? `&status=${status}` : ''}${search ? `&search=${search}` : ''}`}
+                            className={cn(
+                                "p-2 rounded-xl border bg-card hover:bg-muted transition-all",
+                                currentPage <= 1 && "pointer-events-none opacity-50"
+                            )}
+                        >
+                            <ChevronRight className="h-5 w-5 rotate-180" />
+                        </Link>
+                        <span className="text-sm font-bold">Page {currentPage} of {totalPages}</span>
+                        <Link
+                            href={`/my-tasks?page=${currentPage + 1}${status ? `&status=${status}` : ''}${search ? `&search=${search}` : ''}`}
+                            className={cn(
+                                "p-2 rounded-xl border bg-card hover:bg-muted transition-all",
+                                currentPage >= totalPages && "pointer-events-none opacity-50"
+                            )}
+                        >
+                            <ChevronRight className="h-5 w-5" />
+                        </Link>
+                    </div>
+                )}
 
                 {tasks.length === 0 && (
                     <div className="flex flex-col items-center justify-center py-24 text-center space-y-6 bg-muted/20 rounded-[3rem] border-2 border-dashed">

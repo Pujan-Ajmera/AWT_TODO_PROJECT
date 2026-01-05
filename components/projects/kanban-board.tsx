@@ -32,13 +32,23 @@ function InlineAddTask({ listId }: { listId: number }) {
 
         setIsLoading(true);
         try {
-            const formData = new FormData();
-            formData.append("title", title);
-            formData.append("listId", listId.toString());
+            const response = await fetch("/api/tasks", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    title,
+                    listId: listId.toString(),
+                }),
+            });
 
-            await createTaskAction(formData);
-            setTitle("");
-            setIsAdding(false);
+            if (response.ok) {
+                setTitle("");
+                setIsAdding(false);
+                // Trigger a refresh since we're using SSR/server components mostly but components are client
+                window.location.reload();
+            }
         } catch (err) {
             console.error("Inline task add error:", err);
         } finally {
@@ -123,10 +133,25 @@ export function KanbanBoard({ project }: KanbanBoardProps) {
         e.preventDefault();
         if (!newListName.trim()) return;
 
-        const result = await createTaskListAction(project.ProjectID, newListName);
-        if (result.success) {
-            setNewListName("");
-            setIsCreatingList(false);
+        try {
+            const response = await fetch("/api/task-lists", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    projectId: project.ProjectID.toString(),
+                    name: newListName,
+                }),
+            });
+
+            if (response.ok) {
+                setNewListName("");
+                setIsCreatingList(false);
+                window.location.reload();
+            }
+        } catch (error) {
+            console.error("Create list error:", error);
         }
     };
 

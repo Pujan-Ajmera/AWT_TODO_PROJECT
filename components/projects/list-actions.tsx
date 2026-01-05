@@ -17,11 +17,16 @@ export function ListItemActions({ listId, listName }: { listId: number, listName
         setIsDeleting(true);
         setError(null);
         try {
-            const result = await deleteTaskListAction(listId);
-            if (result.success) {
+            const response = await fetch(`/api/task-lists/${listId}`, {
+                method: "DELETE",
+            });
+
+            if (response.ok) {
                 setIsOpen(false);
+                window.location.reload();
             } else {
-                setError(result.error || "Failed to delete list");
+                const data = await response.json();
+                setError(data.error || "Failed to delete list");
                 setIsDeleting(false);
             }
         } catch (err) {
