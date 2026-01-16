@@ -15,8 +15,22 @@ model projects {
   CreatedAt   DateTime?   @default(now()) @db.DateTime(0)
   users       users?      @relation(fields: [CreatedBy], references: [UserID], onDelete: NoAction, onUpdate: NoAction, map: "projects_ibfk_1")
   tasklists   tasklists[]
+  project_members project_members[]
 
   @@index([CreatedBy], map: "CreatedBy")
+}
+
+model project_members {
+  MemberID  Int      @id @default(autoincrement())
+  ProjectID Int
+  UserID    Int
+  JoinedAt  DateTime @default(now())
+  projects  projects @relation(fields: [ProjectID], references: [ProjectID], onDelete: Cascade)
+  users     users    @relation(fields: [UserID], references: [UserID], onDelete: Cascade)
+
+  @@unique([ProjectID, UserID])
+  @@index([ProjectID])
+  @@index([UserID])
 }
 
 model roles {
@@ -121,4 +135,5 @@ model users {
   tasks           tasks[]
   userroles       userroles[]
   taskattachments taskattachments[]
+  project_members project_members[]
 }

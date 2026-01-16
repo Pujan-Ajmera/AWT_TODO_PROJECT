@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { User, Mail, Calendar, Shield, LogOut } from "lucide-react";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { ProfileForm } from "@/components/profile/profile-form";
 import prisma from "@/lib/prisma";
 
 export default async function ProfilePage() {
@@ -57,37 +58,19 @@ export default async function ProfilePage() {
                 </div>
 
                 <div className="md:col-span-2 space-y-6">
+                    <ProfileForm user={{ UserName: userData.UserName, Email: userData.Email }} />
+
                     <div className="rounded-2xl border bg-card p-6 shadow-lg">
-                        <h3 className="text-lg font-semibold mb-4">Account Information</h3>
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-4 p-3 rounded-xl bg-muted/30">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background shadow-sm text-muted-foreground">
-                                    <User className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-medium text-muted-foreground">Full Name</p>
-                                    <p className="text-sm font-semibold">{userData.UserName}</p>
-                                </div>
+                        <h3 className="text-lg font-semibold mb-4">Activity</h3>
+                        <div className="flex items-center gap-4 p-3 rounded-xl bg-muted/30">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background shadow-sm text-muted-foreground">
+                                <Calendar className="h-5 w-5" />
                             </div>
-                            <div className="flex items-center gap-4 p-3 rounded-xl bg-muted/30">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background shadow-sm text-muted-foreground">
-                                    <Mail className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-medium text-muted-foreground">Email Address</p>
-                                    <p className="text-sm font-semibold">{userData.Email}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-4 p-3 rounded-xl bg-muted/30">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background shadow-sm text-muted-foreground">
-                                    <Calendar className="h-5 w-5" />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-medium text-muted-foreground">Member Since</p>
-                                    <p className="text-sm font-semibold">
-                                        {userData.CreatedAt ? new Date(userData.CreatedAt).toLocaleDateString() : "Recently"}
-                                    </p>
-                                </div>
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground">Member Since</p>
+                                <p className="text-sm font-semibold">
+                                    {userData.CreatedAt ? new Date(userData.CreatedAt).toLocaleDateString() : "Recently"}
+                                </p>
                             </div>
                         </div>
                     </div>

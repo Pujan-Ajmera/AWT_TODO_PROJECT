@@ -6,24 +6,28 @@ import {
     Settings,
     Filter,
     Search,
-    MoreHorizontal,
     Plus,
     Users,
     ChevronDown
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { KanbanBoard } from "@/components/projects/kanban-board";
 import Link from "next/link";
+import { ProjectViewContainer } from "@/components/projects/project-view-container";
+import { TaskFilters } from "@/components/projects/task-filters";
+import { ProjectHeaderActions } from "@/components/projects/project-header-actions";
+import { cn } from "@/lib/utils";
 
 export default async function ProjectDetailPage({
     params,
+    searchParams,
 }: {
     params: Promise<{ id: string }>;
+    searchParams: Promise<{ q?: string; priority?: string; status?: string; view?: string }>;
 }) {
     const user = await getCurrentUser();
     if (!user) redirect("/");
 
     const { id } = await params;
+    const { q, priority, status, view = "kanban" } = await searchParams;
     const projectId = parseInt(id);
 
     const project = await prisma.projects.findUnique({
@@ -32,6 +36,18 @@ export default async function ProjectDetailPage({
             tasklists: {
                 include: {
                     tasks: {
+                        where: {
+                            AND: [
+                                q ? {
+                                    OR: [
+                                        { Title: { contains: q } },
+                                        { Description: { contains: q } },
+                                    ]
+                                } : {},
+                                priority ? { Priority: priority } : {},
+                                status ? { Status: status } : {},
+                            ]
+                        },
                         include: {
                             users: {
                                 select: { UserName: true }
@@ -43,6 +59,13 @@ export default async function ProjectDetailPage({
             },
             users: {
                 select: { UserName: true, Email: true }
+            },
+            project_members: {
+                include: {
+                    users: {
+                        select: { UserName: true, Email: true }
+                    }
+                }
             }
         }
     });
@@ -51,10 +74,8 @@ export default async function ProjectDetailPage({
         notFound();
     }
 
-    // Ensure we have some default lists if none exist
-    if (project.tasklists.length === 0) {
-        // We could create default lists here, but for now we'll just show an empty board or handle it in the component
-    }
+    // Cast project to any for now to avoid complex Prisma type issues with the container
+    const projectData = project as any;
 
     return (
         <div className="h-full flex flex-col space-y-6 animate-in fade-in duration-700">
@@ -73,55 +94,78 @@ export default async function ProjectDetailPage({
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="flex -space-x-3 mr-4">
-                        {[1, 2, 3, 4].map((n) => (
-                            <div key={n} className="h-10 w-10 rounded-full border-4 border-background bg-muted flex items-center justify-center text-xs font-bold shadow-sm">
-                                {project.users?.UserName?.[0] || "U"}
-                            </div>
-                        ))}
-                        <button className="h-10 w-10 rounded-full border-4 border-background bg-primary/10 text-primary flex items-center justify-center text-xs font-bold hover:bg-primary/20 transition-colors shadow-sm">
-                            <Plus className="h-4 w-4" />
-                        </button>
-                    </div>
-                    <div className="h-8 w-[1px] bg-border mx-2" />
-                    <button className="flex items-center gap-2 rounded-xl border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted transition-all active:scale-95 shadow-sm">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        Invite
-                    </button>
-                    <button className="p-2.5 rounded-xl border bg-card hover:bg-muted transition-all active:scale-95 shadow-sm">
-                        <Settings className="h-5 w-5 text-muted-foreground" />
-                    </button>
-                </div>
+                <ProjectHeaderActions
+                    project={{
+                        ProjectID: project.ProjectID,
+                        ProjectName: project.ProjectName,
+                        Description: project.Description
+                    }}
+                    members={project.project_members}
+                />
             </header>
 
             <div className="flex items-center justify-between border-b pb-4 px-2">
                 <div className="flex items-center gap-6">
-                    <button className="text-sm font-bold border-b-2 border-primary pb-4 -mb-[18px] px-2">Kanban Board</button>
-                    <button className="text-sm font-medium text-muted-foreground hover:text-foreground pb-4 -mb-[18px] px-2 transition-colors">Task List</button>
-                    <button className="text-sm font-medium text-muted-foreground hover:text-foreground pb-4 -mb-[18px] px-2 transition-colors">Files</button>
-                    <button className="text-sm font-medium text-muted-foreground hover:text-foreground pb-4 -mb-[18px] px-2 transition-colors">Timeline</button>
+                    <Link
+                        href={`/projects/${id}?view=kanban${q ? `&q=${q}` : ""}`}
+                        className={cn(
+                            "text-sm pb-4 -mb-[18px] px-2 transition-all font-bold",
+                            view === "kanban" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Kanban Board
+                    </Link>
+                    <Link
+                        href={`/projects/${id}?view=list${q ? `&q=${q}` : ""}`}
+                        className={cn(
+                            "text-sm pb-4 -mb-[18px] px-2 transition-all font-bold",
+                            view === "list" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Task List
+                    </Link>
+                    <Link
+                        href={`/projects/${id}?view=files${q ? `&q=${q}` : ""}`}
+                        className={cn(
+                            "text-sm pb-4 -mb-[18px] px-2 transition-all font-bold",
+                            view === "files" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Files
+                    </Link>
+                    <Link
+                        href={`/projects/${id}?view=timeline${q ? `&q=${q}` : ""}`}
+                        className={cn(
+                            "text-sm pb-4 -mb-[18px] px-2 transition-all font-bold",
+                            view === "timeline" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Timeline
+                    </Link>
                 </div>
 
                 <div className="flex items-center gap-3">
                     <div className="relative group">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                        <input
-                            type="text"
-                            placeholder="Find tasks..."
-                            className="h-9 w-48 rounded-full border bg-muted/20 pl-9 pr-4 text-xs outline-none focus:bg-background focus:ring-4 focus:ring-primary/10 transition-all focus:w-64"
-                        />
+                        <form action={`/projects/${id}`} method="GET">
+                            <input
+                                name="q"
+                                type="text"
+                                defaultValue={q}
+                                placeholder="Find tasks..."
+                                className="h-9 w-48 rounded-full border bg-muted/20 pl-9 pr-4 text-xs outline-none focus:bg-background focus:ring-4 focus:ring-primary/10 transition-all focus:w-64"
+                            />
+                            <input type="hidden" name="view" value={view} />
+                            {priority && <input type="hidden" name="priority" value={priority} />}
+                            {status && <input type="hidden" name="status" value={status} />}
+                        </form>
                     </div>
-                    <button className="flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-xs font-bold hover:bg-muted transition-all shadow-sm">
-                        <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-                        Filter
-                    </button>
+
+                    <TaskFilters priority={priority} status={status} />
                 </div>
             </div>
 
-            <div className="flex-1 overflow-x-auto pb-8 scrollbar-hide">
-                <KanbanBoard project={project} />
-            </div>
+            <ProjectViewContainer project={projectData} view={view} q={q} />
         </div>
     );
 }

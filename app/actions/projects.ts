@@ -38,7 +38,27 @@ export async function deleteProjectAction(projectId: number) {
     if (!user) throw new Error("Unauthorized");
 
     try {
-        // In a real app, check if user has permission to delete
+        const project = await prisma.projects.findUnique({
+            where: { ProjectID: projectId }
+        });
+
+        if (!project) {
+            return { error: "Project not found" };
+        }
+
+        // Check if current user is an admin
+        const currentUserRoles = await prisma.userroles.findMany({
+            where: { UserID: user.userId },
+            include: { roles: true }
+        });
+
+        const isAdmin = currentUserRoles.some(ur => ur.roles?.RoleName === "Admin");
+        const isCreator = project.CreatedBy === user.userId;
+
+        if (!isAdmin && !isCreator) {
+            return { error: "Permission denied. Only the project creator or an admin can delete this project." };
+        }
+
         await prisma.projects.delete({
             where: { ProjectID: projectId }
         });

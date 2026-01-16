@@ -5,7 +5,11 @@ import { Bell, Search, User, Settings, LogOut, ShieldAlert } from "lucide-react"
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 
-export function Navbar() {
+interface NavbarProps {
+    isAdmin?: boolean;
+}
+
+export function Navbar({ isAdmin }: NavbarProps) {
     const pathname = usePathname();
 
     return (
@@ -20,18 +24,20 @@ export function Navbar() {
 
                 <div className="h-6 w-[1px] bg-border mx-2" />
 
-                <Link
-                    href="/admin/users"
-                    className={cn(
-                        "hidden lg:flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all active:scale-95",
-                        pathname.startsWith("/admin")
-                            ? "bg-primary/10 text-primary border border-primary/20"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                >
-                    <ShieldAlert className="h-4 w-4" />
-                    Admin
-                </Link>
+                {isAdmin && (
+                    <Link
+                        href="/admin/users"
+                        className={cn(
+                            "hidden lg:flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all active:scale-95",
+                            pathname.startsWith("/admin")
+                                ? "bg-primary/10 text-primary border border-primary/20"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                    >
+                        <ShieldAlert className="h-4 w-4" />
+                        Admin
+                    </Link>
+                )}
             </div>
 
             <div className="flex items-center gap-6">

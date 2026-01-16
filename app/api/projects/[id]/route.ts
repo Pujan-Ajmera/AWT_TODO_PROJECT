@@ -90,6 +90,27 @@ export async function DELETE(
 
         const projectId = parseInt(params.id);
 
+        const project = await prisma.projects.findUnique({
+            where: { ProjectID: projectId }
+        });
+
+        if (!project) {
+            return NextResponse.json({ error: "Project not found" }, { status: 404 });
+        }
+
+        // Check if current user is an admin
+        const currentUserRoles = await prisma.userroles.findMany({
+            where: { UserID: user.userId },
+            include: { roles: true }
+        });
+
+        const isAdmin = currentUserRoles.some(ur => ur.roles?.RoleName === "Admin");
+        const isCreator = project.CreatedBy === user.userId;
+
+        if (!isAdmin && !isCreator) {
+            return NextResponse.json({ error: "Forbidden: Only creator or admin can delete" }, { status: 403 });
+        }
+
         await prisma.projects.delete({
             where: { ProjectID: projectId }
         });

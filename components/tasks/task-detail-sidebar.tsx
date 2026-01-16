@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
     X,
     Clock,
@@ -31,6 +32,7 @@ interface TaskDetailSidebarProps {
 }
 
 export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarProps) {
+    const router = useRouter();
     const [comment, setComment] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [attachments, setAttachments] = useState<any[]>([]);
@@ -71,8 +73,8 @@ export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarPr
 
             if (response.ok) {
                 setComment("");
-                // Optionally re-fetch task or reload
-                window.location.reload();
+                // Trigger a refresh since we're using SSR/server components mostly but components are client
+                router.refresh();
             }
         } catch (error) {
             console.error("Add comment error:", error);
@@ -97,6 +99,7 @@ export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarPr
 
             if (response.ok) {
                 fetchAttachments();
+                router.refresh();
             }
         } catch (error) {
             console.error("Upload error:", error);
@@ -116,7 +119,7 @@ export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarPr
             });
 
             if (response.ok) {
-                window.location.reload();
+                router.refresh();
             }
         } catch (error) {
             console.error("Status update error:", error);
@@ -133,7 +136,7 @@ export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarPr
 
             if (response.ok) {
                 onClose();
-                window.location.reload();
+                router.refresh();
             } else {
                 const data = await response.json();
                 alert(data.error || "Failed to delete task");
@@ -309,7 +312,7 @@ export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarPr
                                 <p className="text-xs">
                                     <span className="font-bold">System</span> created this task
                                 </p>
-                                <p className="text-[10px] text-muted-foreground mt-1 font-bold">{new Date(task.CreatedAt).toLocaleString()}</p>
+                                <p className="text-[10px] text-muted-foreground mt-1 font-bold">{new Date().toLocaleString()}</p>
                             </div>
                         </div>
                     </div>
@@ -317,7 +320,7 @@ export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarPr
 
                 {/* Footer / Comments */}
                 <div className="p-6 border-t border-border/10 bg-muted/10 backdrop-blur-md">
-                    <form onSubmit={handleAddComment} className="relative group">
+                    <form onSubmit={(e) => { e.preventDefault(); handleAddComment(); }} className="relative group">
                         <div className="absolute left-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-lg bg-background border flex items-center justify-center text-muted-foreground transition-all group-focus-within:text-primary group-focus-within:shadow-md">
                             <MessageSquare className="h-4 w-4" />
                         </div>

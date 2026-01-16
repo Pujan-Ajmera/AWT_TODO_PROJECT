@@ -17,6 +17,7 @@ import { UserRoleManager } from "./user-role-manager";
 import { deleteUserAction } from "@/app/actions/admin";
 import { CreateUserModal } from "./create-user-modal";
 import { UpdateUserModal } from "./update-user-modal";
+import { UserDeleteButton } from "./user-delete-button";
 
 export default async function AdminUsersPage() {
     const user = await getCurrentUser();
@@ -139,23 +140,7 @@ export default async function AdminUsersPage() {
                                                 availableRoles={allRoles}
                                             />
                                             {u.UserID !== user.userId && (
-                                                <button
-                                                    onClick={async () => {
-                                                        if (!confirm("Are you sure you want to delete this user?")) return;
-                                                        const response = await fetch(`/api/admin/users/${u.UserID}`, {
-                                                            method: "DELETE"
-                                                        });
-                                                        if (response.ok) {
-                                                            window.location.reload();
-                                                        } else {
-                                                            const data = await response.json();
-                                                            alert(data.error || "Failed to delete user");
-                                                        }
-                                                    }}
-                                                    className="p-2 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
-                                                >
-                                                    <Trash2 className="h-5 w-5" />
-                                                </button>
+                                                <UserDeleteButton userId={u.UserID} userName={u.UserName} />
                                             )}
                                         </div>
                                     </td>

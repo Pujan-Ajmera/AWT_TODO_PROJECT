@@ -19,31 +19,46 @@ import { ProjectActions } from "@/components/projects/project-actions";
 export default async function ProjectsPage({
     searchParams,
 }: {
-    searchParams: Promise<{ q?: string }>;
+    searchParams: Promise<{ q?: string; page?: string }>;
 }) {
     const user = await getCurrentUser();
     if (!user) redirect("/");
 
-    const { q } = await searchParams;
+    const { q, page } = await searchParams;
+    const currentPage = parseInt(page || "1");
+    const pageSize = 6;
 
-    // Fetch all projects (for now, eventually filter by membership)
-    const projects = await prisma.projects.findMany({
-        where: q ? {
-            OR: [
-                { ProjectName: { contains: q } },
-                { Description: { contains: q } },
-            ]
-        } : undefined,
-        include: {
-            _count: {
-                select: { tasklists: true }
+    const [projects, totalCount] = await Promise.all([
+        prisma.projects.findMany({
+            where: q ? {
+                OR: [
+                    { ProjectName: { contains: q } },
+                    { Description: { contains: q } },
+                ]
+            } : undefined,
+            include: {
+                _count: {
+                    select: { tasklists: true }
+                },
+                users: {
+                    select: { UserName: true }
+                }
             },
-            users: {
-                select: { UserName: true }
-            }
-        },
-        orderBy: { CreatedAt: "desc" }
-    });
+            orderBy: { CreatedAt: "desc" },
+            take: pageSize,
+            skip: (currentPage - 1) * pageSize,
+        }),
+        prisma.projects.count({
+            where: q ? {
+                OR: [
+                    { ProjectName: { contains: q } },
+                    { Description: { contains: q } },
+                ]
+            } : undefined,
+        })
+    ]);
+
+    const totalPages = Math.ceil(totalCount / pageSize);
 
     return (
         <div className="max-w-[1400px] mx-auto space-y-10 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -146,6 +161,41 @@ export default async function ProjectsPage({
                     </div>
                 )}
             </div>
+
+            {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-12 pb-12">
+                    <Link
+                        href={`/projects?page=${Math.max(1, currentPage - 1)}${q ? `&q=${q}` : ""}`}
+                        className={cn(
+                            "px-4 py-2 rounded-xl border bg-card text-sm font-bold transition-all hover:bg-muted",
+                            currentPage === 1 && "pointer-events-none opacity-50"
+                        )}
+                    >
+                        Previous
+                    </Link>
+                    {[...Array(totalPages)].map((_, i) => (
+                        <Link
+                            key={i}
+                            href={`/projects?page=${i + 1}${q ? `&q=${q}` : ""}`}
+                            className={cn(
+                                "h-10 w-10 flex items-center justify-center rounded-xl border bg-card text-sm font-bold transition-all hover:bg-muted",
+                                currentPage === i + 1 ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"
+                            )}
+                        >
+                            {i + 1}
+                        </Link>
+                    ))}
+                    <Link
+                        href={`/projects?page=${Math.min(totalPages, currentPage + 1)}${q ? `&q=${q}` : ""}`}
+                        className={cn(
+                            "px-4 py-2 rounded-xl border bg-card text-sm font-bold transition-all hover:bg-muted",
+                            currentPage === totalPages && "pointer-events-none opacity-50"
+                        )}
+                    >
+                        Next
+                    </Link>
+                </div>
+            )}
         </div>
     );
 }

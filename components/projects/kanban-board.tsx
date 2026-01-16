@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
     Plus,
     MoreHorizontal,
@@ -22,6 +23,7 @@ import { TaskDetailSidebar } from "@/components/tasks/task-detail-sidebar";
 import { ListItemActions } from "@/components/projects/list-actions";
 
 function InlineAddTask({ listId }: { listId: number }) {
+    const router = useRouter();
     const [isAdding, setIsAdding] = useState(false);
     const [title, setTitle] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +49,7 @@ function InlineAddTask({ listId }: { listId: number }) {
                 setTitle("");
                 setIsAdding(false);
                 // Trigger a refresh since we're using SSR/server components mostly but components are client
-                window.location.reload();
+                router.refresh();
             }
         } catch (err) {
             console.error("Inline task add error:", err);
@@ -121,13 +123,14 @@ interface KanbanBoardProps {
         ProjectName: string;
         tasklists: TaskList[];
     };
+    onTaskClick?: (task: Task) => void;
 }
 
-export function KanbanBoard({ project }: KanbanBoardProps) {
+export function KanbanBoard({ project, onTaskClick }: KanbanBoardProps) {
+    const router = useRouter();
     const [isCreatingList, setIsCreatingList] = useState(false);
     const [newListName, setNewListName] = useState("");
-    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    // Removed internal sidebar state as it is now managed by the parent container
 
     const handleCreateList = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -148,7 +151,7 @@ export function KanbanBoard({ project }: KanbanBoardProps) {
             if (response.ok) {
                 setNewListName("");
                 setIsCreatingList(false);
-                window.location.reload();
+                router.refresh();
             }
         } catch (error) {
             console.error("Create list error:", error);
@@ -156,14 +159,62 @@ export function KanbanBoard({ project }: KanbanBoardProps) {
     };
 
     const handleTaskClick = (task: Task) => {
-        setSelectedTask(task);
-        setIsSidebarOpen(true);
+        if (onTaskClick) {
+            onTaskClick(task);
+        }
+    };
+
+    const handleDragStart = (e: React.DragEvent, taskId: number) => {
+        e.dataTransfer.setData("taskId", taskId.toString());
+        e.dataTransfer.effectAllowed = "move";
+        // Add a class for styling while dragging if needed
+        const target = e.target as HTMLElement;
+        target.classList.add("opacity-50");
+    };
+
+    const handleDragEnd = (e: React.DragEvent) => {
+        const target = e.target as HTMLElement;
+        target.classList.remove("opacity-50");
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+    };
+
+    const handleDrop = async (e: React.DragEvent, listId: number) => {
+        e.preventDefault();
+        const taskId = e.dataTransfer.getData("taskId");
+        if (!taskId) return;
+
+        try {
+            const response = await fetch(`/api/tasks/${taskId}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    listId: listId.toString(),
+                }),
+            });
+
+            if (response.ok) {
+                router.refresh();
+            }
+        } catch (error) {
+            console.error("Task move error:", error);
+        }
     };
 
     return (
-        <div className="flex gap-8 min-h-[calc(100vh-320px)] items-start">
+        <div className="flex gap-8 pb-6 items-start overflow-x-auto min-h-[calc(100vh-320px)]">
             {project.tasklists.map((list) => (
-                <div key={list.ListID} className="flex-shrink-0 w-[350px] flex flex-col max-h-full group/list">
+                <div
+                    key={list.ListID}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, list.ListID)}
+                    className="flex-shrink-0 w-[350px] flex flex-col max-h-[calc(100vh-280px)] group/list"
+                >
                     <div className="flex items-center justify-between mb-4 px-2">
                         <div className="flex items-center gap-2">
                             <h3 className="font-black text-lg tracking-tight uppercase truncate max-w-[200px]">{list.ListName}</h3>
@@ -179,12 +230,15 @@ export function KanbanBoard({ project }: KanbanBoardProps) {
                         </div>
                     </div>
 
-                    <div className="space-y-4 overflow-y-auto pr-2 pb-4 scrollbar-thin scrollbar-thumb-muted-foreground/10 hover:scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+                    <div className="flex-1 space-y-4 overflow-y-auto pr-2 pb-4 scrollbar-thin scrollbar-thumb-muted-foreground/10 hover:scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent min-h-[100px]">
                         {list.tasks.map((task) => (
                             <div
                                 key={task.TaskID}
+                                draggable="true"
+                                onDragStart={(e) => handleDragStart(e, task.TaskID)}
+                                onDragEnd={handleDragEnd}
                                 onClick={() => handleTaskClick(task)}
-                                className="group/card relative rounded-2xl border bg-card/80 p-5 shadow-sm transition-all duration-300 hover:shadow-xl hover:bg-card hover:-translate-y-1 hover:border-primary/20 cursor-pointer card-shadow"
+                                className="group/card relative rounded-2xl border bg-card/80 p-5 shadow-sm transition-all duration-300 hover:shadow-xl hover:bg-card hover:-translate-y-1 hover:border-primary/20 cursor-grab active:cursor-grabbing card-shadow"
                             >
                                 {/* Priority Indicator */}
                                 <div className={cn(
@@ -286,11 +340,6 @@ export function KanbanBoard({ project }: KanbanBoardProps) {
                 </button>
             )}
 
-            <TaskDetailSidebar
-                task={selectedTask}
-                isOpen={isSidebarOpen}
-                onClose={() => setIsSidebarOpen(false)}
-            />
         </div>
     );
 }
