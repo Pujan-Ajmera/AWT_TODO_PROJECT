@@ -12,7 +12,6 @@ export default async function RootPage() {
   const session = cookieStore.get("user_session");
 
   if (user) {
-    // If logged in, show dashboard with its layout
     const projects = await prisma.projects.findMany({
       orderBy: { ProjectName: "asc" },
     });
@@ -31,7 +30,5 @@ export default async function RootPage() {
       </div>
     );
   }
-
-  // Otherwise show landing page
   return <LandingView session={session} />;
 }

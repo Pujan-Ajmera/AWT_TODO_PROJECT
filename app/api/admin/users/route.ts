@@ -26,7 +26,7 @@ export async function POST(request: Request) {
             data: {
                 UserName: name,
                 Email: email,
-                PasswordHash: password || "password123", // Default password
+                PasswordHash: password || "password123",
             }
         });
 

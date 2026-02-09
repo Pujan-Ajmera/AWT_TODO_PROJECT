@@ -53,13 +53,10 @@ export async function POST(
 
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
-
-        // Ensure upload directory exists
         const uploadDir = join(process.cwd(), "public", "uploads");
         try {
             await mkdir(uploadDir, { recursive: true });
         } catch (e) {
-            // Directory might already exist
         }
 
         const uniqueFileName = `${uuidv4()}-${file.name}`;

@@ -79,8 +79,6 @@ export async function PATCH(
                 ListID: listId ? parseInt(listId) : undefined,
             }
         });
-
-        // Log history if status changed
         if (status) {
             await prisma.taskhistory.create({
                 data: {

@@ -12,8 +12,7 @@ import {
     Users,
     FolderKanban,
     ShieldAlert,
-    ChevronRight,
-    Activity
+    ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -108,25 +107,7 @@ export function Sidebar({ projects = [] }: { projects?: any[] }) {
                     </div>
                 </div>
 
-                <div className="mt-auto pt-8">
-                    <div className="rounded-[2rem] border-2 border-dashed border-primary/20 bg-primary/5 p-6 space-y-4 relative overflow-hidden group">
-                        <div className="absolute -top-10 -right-10 h-24 w-24 bg-primary/10 blur-2xl rounded-full transition-transform group-hover:scale-150" />
 
-                        <div className="flex items-center justify-between">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-primary">Task Velocity</p>
-                            <Activity className="h-4 w-4 text-primary animate-pulse" />
-                        </div>
-                        <div className="space-y-2">
-                            <div className="flex items-end justify-between">
-                                <span className="text-3xl font-black">82%</span>
-                                <span className="text-[10px] font-bold text-muted-foreground mb-1">↑ 12% from last week</span>
-                            </div>
-                            <div className="h-3 w-full rounded-full bg-muted overflow-hidden border border-border/50 p-0.5">
-                                <div className="h-full w-[82%] bg-gradient-to-r from-primary to-primary/60 rounded-full shadow-[0_0_12px_rgba(var(--primary),0.4)] transition-all duration-1000" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </aside>
     );

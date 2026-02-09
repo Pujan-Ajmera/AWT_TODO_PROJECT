@@ -97,8 +97,6 @@ export async function DELETE(
         if (!project) {
             return NextResponse.json({ error: "Project not found" }, { status: 404 });
         }
-
-        // Check if current user is an admin
         const currentUserRoles = await prisma.userroles.findMany({
             where: { UserID: user.userId },
             include: { roles: true }

@@ -8,7 +8,6 @@ export async function DELETE(
 ) {
     try {
         const user = await getCurrentUser();
-        // Check if current user is an admin
         const currentUserRoles = await prisma.userroles.findMany({
             where: { UserID: user?.userId },
             include: { roles: true }
