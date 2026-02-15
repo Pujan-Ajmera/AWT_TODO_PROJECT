@@ -1,3 +1,4 @@
+
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
@@ -19,14 +20,16 @@ import { ProjectActions } from "@/components/projects/project-actions";
 export default async function ProjectsPage({
     searchParams,
 }: {
-    searchParams: Promise<{ q?: string; page?: string }>;
+    searchParams: Promise<{ q?: string; page?: string; sort?: string }>;
 }) {
     const user = await getCurrentUser();
     if (!user) redirect("/");
 
-    const { q, page } = await searchParams;
+    const { q, page, sort } = await searchParams;
     const currentPage = parseInt(page || "1");
     const pageSize = 6;
+
+    const orderBy = sort === 'oldest' ? { CreatedAt: 'asc' } : { CreatedAt: 'desc' };
 
     const [projects, totalCount] = await Promise.all([
         prisma.projects.findMany({
@@ -44,7 +47,7 @@ export default async function ProjectsPage({
                     select: { UserName: true }
                 }
             },
-            orderBy: { CreatedAt: "desc" },
+            orderBy: orderBy as any,
             take: pageSize,
             skip: (currentPage - 1) * pageSize,
         }),
@@ -86,25 +89,16 @@ export default async function ProjectsPage({
                     </form>
                 </div>
 
-                <div className="flex gap-2">
-                    <button className="px-4 py-2 rounded-xl border bg-background text-sm font-semibold hover:bg-muted transition-all">
-                        All Status
-                    </button>
-                    <button className="px-4 py-2 rounded-xl border bg-background text-sm font-semibold hover:bg-muted transition-all">
-                        Most Recent
-                    </button>
-                </div>
             </div>
 
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                 {projects.map((project, i) => (
-                    <Link
+                    <div
                         key={project.ProjectID}
-                        href={`/projects/${project.ProjectID}`}
-                        className="group relative flex flex-col rounded-[2.5rem] border bg-card p-8 transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 card-shadow overflow-hidden"
+                        className="group relative flex flex-col rounded-[2.5rem] border bg-card p-8 transition-all duration-500 card-shadow overflow-hidden"
                     >
                         {/* Decorative background element */}
-                        <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-primary/5 blur-3xl group-hover:bg-primary/10 transition-colors" />
+                        <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-primary/5 blur-3xl transition-colors" />
 
                         <div className="flex items-start justify-between mb-8">
                             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-inner">
@@ -114,7 +108,7 @@ export default async function ProjectsPage({
                         </div>
 
                         <div className="flex-1 space-y-3">
-                            <h3 className="text-2xl font-bold tracking-tight group-hover:text-primary transition-colors">
+                            <h3 className="text-2xl font-bold tracking-tight transition-colors">
                                 {project.ProjectName}
                             </h3>
                             <p className="text-muted-foreground line-clamp-2 text-sm leading-relaxed">
@@ -140,11 +134,10 @@ export default async function ProjectsPage({
                                 </span>
                             </div>
                             <div className="flex items-center gap-1.5 text-primary">
-                                <span className="text-xs font-bold uppercase tracking-widest">Open</span>
-                                <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform" />
+                                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Open</span>
                             </div>
                         </div>
-                    </Link>
+                    </div>
                 ))}
 
                 {projects.length === 0 && (

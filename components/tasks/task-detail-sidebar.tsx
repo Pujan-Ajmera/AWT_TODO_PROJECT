@@ -24,6 +24,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { updateTaskStatusAction, addCommentAction, deleteTaskAction } from "@/app/actions/tasks";
+import Swal from "sweetalert2";
 
 interface TaskDetailSidebarProps {
     task: any; // Task object with comments and history
@@ -127,7 +128,24 @@ export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarPr
     };
 
     const handleDelete = async () => {
-        if (!confirm(`Delete task "${task.Title}"?`)) return;
+        const result = await Swal.fire({
+            title: "Delete Task?",
+            text: `Are you sure you want to delete "${task.Title}"? This cannot be undone.`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#ef4444",
+            cancelButtonColor: "#6b7280",
+            confirmButtonText: "Yes, delete it!",
+            cancelButtonText: "Cancel",
+            customClass: {
+                popup: "rounded-[2rem] border-none shadow-2xl",
+                confirmButton: "rounded-xl font-bold px-6",
+                cancelButton: "rounded-xl font-bold px-6"
+            }
+        });
+
+        if (!result.isConfirmed) return;
+
         setIsSubmitting(true);
         try {
             const response = await fetch(`/api/tasks/${task.TaskID}`, {
@@ -135,14 +153,41 @@ export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarPr
             });
 
             if (response.ok) {
+                Swal.fire({
+                    title: "Deleted!",
+                    text: "Task has been deleted.",
+                    icon: "success",
+                    timer: 2000,
+                    showConfirmButton: false,
+                    customClass: {
+                        popup: "rounded-[2rem] border-none shadow-2xl"
+                    }
+                });
                 onClose();
                 router.refresh();
             } else {
                 const data = await response.json();
-                alert(data.error || "Failed to delete task");
+                Swal.fire({
+                    title: "Error",
+                    text: data.error || "Failed to delete task",
+                    icon: "error",
+                    customClass: {
+                        popup: "rounded-[2rem] border-none shadow-2xl",
+                        confirmButton: "rounded-xl font-bold px-6"
+                    }
+                });
             }
         } catch (error) {
             console.error("Delete task error:", error);
+            Swal.fire({
+                title: "Error",
+                text: "Something went wrong while deleting the task.",
+                icon: "error",
+                customClass: {
+                    popup: "rounded-[2rem] border-none shadow-2xl",
+                    confirmButton: "rounded-xl font-bold px-6"
+                }
+            });
         } finally {
             setIsSubmitting(false);
         }

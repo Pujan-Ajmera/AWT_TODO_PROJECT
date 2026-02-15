@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { MoreHorizontal, Trash2, Loader2, AlertTriangle } from "lucide-react";
-import { deleteTaskListAction } from "@/app/actions/projects";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import Swal from "sweetalert2";
 
 export function ListItemActions({ listId, listName }: { listId: number, listName: string }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -12,7 +12,23 @@ export function ListItemActions({ listId, listName }: { listId: number, listName
     const [error, setError] = useState<string | null>(null);
 
     const handleDelete = async () => {
-        if (!confirm(`Are you sure you want to delete list "${listName}"? All tasks in this list will be deleted.`)) return;
+        const result = await Swal.fire({
+            title: "Delete List?",
+            text: `Are you sure you want to delete list "${listName}"? All tasks in this list will be deleted.`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#ef4444",
+            cancelButtonColor: "#6b7280",
+            confirmButtonText: "Yes, delete it!",
+            cancelButtonText: "Cancel",
+            customClass: {
+                popup: "rounded-[2rem] border-none shadow-2xl",
+                confirmButton: "rounded-xl font-bold px-6",
+                cancelButton: "rounded-xl font-bold px-6"
+            }
+        });
+
+        if (!result.isConfirmed) return;
 
         setIsDeleting(true);
         setError(null);
@@ -22,6 +38,16 @@ export function ListItemActions({ listId, listName }: { listId: number, listName
             });
 
             if (response.ok) {
+                await Swal.fire({
+                    title: "Deleted!",
+                    text: "List has been deleted.",
+                    icon: "success",
+                    timer: 2000,
+                    showConfirmButton: false,
+                    customClass: {
+                        popup: "rounded-[2rem] border-none shadow-2xl"
+                    }
+                });
                 setIsOpen(false);
                 window.location.reload();
             } else {

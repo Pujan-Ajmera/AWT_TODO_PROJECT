@@ -27,7 +27,7 @@ export default async function ProjectDetailPage({
     if (!user) redirect("/");
 
     const { id } = await params;
-    const { q, priority, status, view = "kanban" } = await searchParams;
+    const { q, priority, status, view = "details" } = await searchParams;
     const projectId = parseInt(id);
 
     const project = await prisma.projects.findUnique({
@@ -106,6 +106,15 @@ export default async function ProjectDetailPage({
 
             <div className="flex items-center justify-between border-b pb-4 px-2">
                 <div className="flex items-center gap-6">
+                    <Link
+                        href={`/projects/${id}?view=details${q ? `&q=${q}` : ""}`}
+                        className={cn(
+                            "text-sm pb-4 -mb-[18px] px-2 transition-all font-bold",
+                            (view === "details" || !view) ? "border-b-2 border-primary text-foreground" : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        Details
+                    </Link>
                     <Link
                         href={`/projects/${id}?view=kanban${q ? `&q=${q}` : ""}`}
                         className={cn(

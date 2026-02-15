@@ -8,7 +8,6 @@ import {
     Calendar,
     MoreHorizontal,
     UserPlus,
-    Search,
     ShieldCheck,
     Trash2
 } from "lucide-react";
@@ -18,13 +17,26 @@ import { deleteUserAction } from "@/app/actions/admin";
 import { CreateUserModal } from "./create-user-modal";
 import { UpdateUserModal } from "./update-user-modal";
 import { UserDeleteButton } from "./user-delete-button";
+import { UserSearch } from "./user-search";
 
-export default async function AdminUsersPage() {
+export default async function AdminUsersPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ q?: string }>;
+}) {
     const user = await getCurrentUser();
     if (!user) redirect("/login");
 
+    const { q } = await searchParams;
+
     // Fetch all users with their roles
     const allUsers = await prisma.users.findMany({
+        where: q ? {
+            OR: [
+                { UserName: { contains: q } },
+                { Email: { contains: q } }
+            ]
+        } : undefined,
         include: {
             userroles: {
                 include: {
@@ -39,7 +51,14 @@ export default async function AdminUsersPage() {
     const allRoles = await prisma.roles.findMany();
 
     // Check if the current user is actually an admin
-    const isAdmin = allUsers.find(u => u.UserID === user.userId)?.userroles.some(ur => ur.roles?.RoleName === "Admin");
+    // Note: We need to fetch the current user's roles separately if they might be filtered out by the search query
+    // Optimally, we should fetch current user roles independently of the list query.
+    const currentUserRoles = await prisma.userroles.findMany({
+        where: { UserID: user.userId },
+        include: { roles: true }
+    });
+
+    const isAdmin = currentUserRoles.some(ur => ur.roles?.RoleName === "Admin");
 
     if (!isAdmin) {
         return (
@@ -68,19 +87,13 @@ export default async function AdminUsersPage() {
             </header>
 
             <div className="bg-card/30 backdrop-blur-md rounded-[2.5rem] border border-border/50 overflow-hidden card-shadow">
+
                 <div className="p-8 border-b border-border/10 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-muted/20">
-                    <div className="relative w-full md:w-96 group">
-                        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                        <input
-                            type="text"
-                            placeholder="Filter by name or email..."
-                            className="w-full h-12 rounded-2xl border bg-background/50 pl-12 pr-4 text-sm outline-none transition-all focus:ring-4 focus:ring-primary/10 focus:border-primary"
-                        />
-                    </div>
+                    <UserSearch />
                     <div className="flex gap-4">
                         <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
                             <ShieldCheck className="h-4 w-4" />
-                            <span className="text-xs font-black uppercase tracking-widest">{allUsers.length} Total Users</span>
+                            <span className="text-xs font-black uppercase tracking-widest">{allUsers.length} Users Found</span>
                         </div>
                     </div>
                 </div>

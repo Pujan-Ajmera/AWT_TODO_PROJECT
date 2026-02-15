@@ -1,18 +1,20 @@
 "use client";
 
+import { AdvancedSearchFilters } from "@/components/search/advanced-search-filters";
+import { TaskItemActions } from "@/components/tasks/task-item-actions";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-    CheckCircle2,
     LayoutDashboard,
     ListTodo,
     Plus,
     Settings,
-    Star,
-    Users,
     FolderKanban,
     ShieldAlert,
-    ChevronRight
+    ChevronRight,
+    Search,
+    BarChart3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +22,8 @@ const mainItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/" },
     { icon: ListTodo, label: "My Tasks", href: "/my-tasks" },
     { icon: FolderKanban, label: "Projects", href: "/projects" },
+    { icon: Search, label: "Advanced Search", href: "/search" },
+    { icon: BarChart3, label: "Analytics", href: "/analytics" },
 ];
 
 const adminItems = [
@@ -88,21 +92,19 @@ export function Sidebar({ projects = [] }: { projects?: any[] }) {
                         </Link>
                     </div>
                     <div className="space-y-1">
-                        {projects.slice(0, 5).map((project) => (
-                            <Link
+                        {Array.isArray(projects) && projects.slice(0, 3).map((project) => (
+                            <div
                                 key={project.ProjectID}
-                                href={`/projects/${project.ProjectID}`}
                                 className={cn(
-                                    "group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all hover:bg-muted/50",
-                                    pathname === `/projects/${project.ProjectID}` ? "text-primary bg-primary/5" : "text-muted-foreground"
+                                    "group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all hover:bg-muted/50 text-muted-foreground"
                                 )}
                             >
                                 <div className={cn(
-                                    "h-2 w-2 rounded-full ring-4 ring-transparent group-hover:ring-current/10 transition-all",
+                                    "h-2 w-2 rounded-full ring-4 ring-transparent transition-all",
                                     project.ProjectID % 3 === 0 ? "bg-blue-500" : project.ProjectID % 3 === 1 ? "bg-purple-500" : "bg-emerald-500"
                                 )} />
                                 <span className="truncate">{project.ProjectName}</span>
-                            </Link>
+                            </div>
                         ))}
                     </div>
                 </div>

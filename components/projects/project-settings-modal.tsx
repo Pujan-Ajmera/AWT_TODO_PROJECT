@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Trash2, AlertTriangle, Settings } from "lucide-react";
 import { deleteProjectAction } from "@/app/actions/projects";
+import Swal from "sweetalert2";
 
 interface ProjectSettingsModalProps {
     isOpen: boolean;
@@ -52,7 +53,23 @@ export function ProjectSettingsModal({ isOpen, onClose, project }: ProjectSettin
     };
 
     const handleDelete = async () => {
-        if (!confirm(`Are you sure you want to delete "${project.ProjectName}"? This action cannot be undone.`)) return;
+        const result = await Swal.fire({
+            title: "Delete Project?",
+            text: `Are you sure you want to delete "${project.ProjectName}"? This action cannot be undone and will delete all tasks within it.`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#ef4444",
+            cancelButtonColor: "#6b7280",
+            confirmButtonText: "Yes, delete it!",
+            cancelButtonText: "Cancel",
+            customClass: {
+                popup: "rounded-[2rem] border-none shadow-2xl",
+                confirmButton: "rounded-xl font-bold px-6",
+                cancelButton: "rounded-xl font-bold px-6"
+            }
+        });
+
+        if (!result.isConfirmed) return;
 
         setIsDeleting(true);
         setError(null);
@@ -60,6 +77,16 @@ export function ProjectSettingsModal({ isOpen, onClose, project }: ProjectSettin
         try {
             const result = await deleteProjectAction(project.ProjectID);
             if (result.success) {
+                Swal.fire({
+                    title: "Deleted!",
+                    text: "Project has been deleted.",
+                    icon: "success",
+                    timer: 2000,
+                    showConfirmButton: false,
+                    customClass: {
+                        popup: "rounded-[2rem] border-none shadow-2xl"
+                    }
+                });
                 router.push("/projects");
             } else {
                 setError(result.error || "Failed to delete project");

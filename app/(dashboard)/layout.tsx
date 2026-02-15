@@ -12,7 +12,8 @@ export default async function DashboardLayout({
 
     // Fetch projects for sidebar
     const projects = await prisma.projects.findMany({
-        orderBy: { ProjectName: 'asc' }
+        orderBy: { CreatedAt: 'desc' },
+        take: 3
     });
 
     // Check if user is admin

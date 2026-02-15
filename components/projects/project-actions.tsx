@@ -5,6 +5,7 @@ import { MoreHorizontal, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { deleteProjectAction } from "@/app/actions/projects";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import Swal from "sweetalert2";
 
 export function ProjectActions({ projectId, projectName }: { projectId: number, projectName: string }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -12,13 +13,39 @@ export function ProjectActions({ projectId, projectName }: { projectId: number, 
     const [error, setError] = useState<string | null>(null);
 
     const handleDelete = async () => {
-        if (!confirm(`Are you sure you want to delete "${projectName}"? This will delete all tasks and lists within it.`)) return;
+        const result = await Swal.fire({
+            title: "Delete Project?",
+            text: `Are you sure you want to delete "${projectName}"? This will delete all tasks and lists within it.`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#ef4444",
+            cancelButtonColor: "#6b7280",
+            confirmButtonText: "Yes, delete it!",
+            cancelButtonText: "Cancel",
+            customClass: {
+                popup: "rounded-[2rem] border-none shadow-2xl",
+                confirmButton: "rounded-xl font-bold px-6",
+                cancelButton: "rounded-xl font-bold px-6"
+            }
+        });
+
+        if (!result.isConfirmed) return;
 
         setIsDeleting(true);
         setError(null);
         try {
             const result = await deleteProjectAction(projectId);
             if (result.success) {
+                Swal.fire({
+                    title: "Deleted!",
+                    text: "Project has been deleted.",
+                    icon: "success",
+                    timer: 2000,
+                    showConfirmButton: false,
+                    customClass: {
+                        popup: "rounded-[2rem] border-none shadow-2xl"
+                    }
+                });
                 setIsOpen(false);
             } else {
                 setError(result.error || "Failed to delete project");

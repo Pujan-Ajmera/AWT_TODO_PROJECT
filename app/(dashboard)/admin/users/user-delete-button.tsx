@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Trash2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { deleteUserAction } from "@/app/actions/admin";
+import Swal from "sweetalert2";
 
 interface UserDeleteButtonProps {
     userId: number;
@@ -15,19 +16,61 @@ export function UserDeleteButton({ userId, userName }: UserDeleteButtonProps) {
     const router = useRouter();
 
     const handleDelete = async () => {
-        if (!confirm(`Are you sure you want to delete user "${userName}"?`)) return;
+        const result = await Swal.fire({
+            title: "Delete User?",
+            text: `Are you sure you want to delete user "${userName}"? This action cannot be undone.`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#ef4444",
+            cancelButtonColor: "#6b7280",
+            confirmButtonText: "Yes, delete it!",
+            cancelButtonText: "Cancel",
+            customClass: {
+                popup: "rounded-[2rem] border-none shadow-2xl",
+                confirmButton: "rounded-xl font-bold px-6",
+                cancelButton: "rounded-xl font-bold px-6"
+            }
+        });
+
+        if (!result.isConfirmed) return;
 
         setIsLoading(true);
         try {
             const result = await deleteUserAction(userId);
             if (result.success) {
+                await Swal.fire({
+                    title: "Deleted!",
+                    text: "User has been deleted.",
+                    icon: "success",
+                    timer: 2000,
+                    showConfirmButton: false,
+                    customClass: {
+                        popup: "rounded-[2rem] border-none shadow-2xl"
+                    }
+                });
                 router.refresh();
             } else {
-                alert(result.error || "Failed to delete user");
+                await Swal.fire({
+                    title: "Error",
+                    text: result.error || "Failed to delete user",
+                    icon: "error",
+                    customClass: {
+                        popup: "rounded-[2rem] border-none shadow-2xl",
+                        confirmButton: "rounded-xl font-bold px-6"
+                    }
+                });
             }
         } catch (error) {
             console.error("Delete user error:", error);
-            alert("Something went wrong");
+            await Swal.fire({
+                title: "Error",
+                text: "Something went wrong",
+                icon: "error",
+                customClass: {
+                    popup: "rounded-[2rem] border-none shadow-2xl",
+                    confirmButton: "rounded-xl font-bold px-6"
+                }
+            });
         } finally {
             setIsLoading(false);
         }

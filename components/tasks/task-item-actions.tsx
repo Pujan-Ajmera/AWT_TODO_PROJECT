@@ -5,6 +5,7 @@ import { MoreHorizontal, Trash2, CheckCircle, Clock, Loader2, AlertCircle } from
 import { deleteTaskAction, updateTaskStatusAction } from "@/app/actions/tasks";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import Swal from "sweetalert2";
 
 export function TaskItemActions({ taskId, taskTitle }: { taskId: number, taskTitle: string }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -25,6 +26,28 @@ export function TaskItemActions({ taskId, taskTitle }: { taskId: number, taskTit
             setError("Something went wrong");
         } finally {
             setIsActionLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        const result = await Swal.fire({
+            title: "Are you sure?",
+            text: `You are about to delete the task "${taskTitle}". This action cannot be undone.`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#ef4444",
+            cancelButtonColor: "#6b7280",
+            confirmButtonText: "Yes, delete it!",
+            cancelButtonText: "Cancel",
+            customClass: {
+                popup: "rounded-[2rem] border-none shadow-2xl",
+                confirmButton: "rounded-xl font-bold px-6",
+                cancelButton: "rounded-xl font-bold px-6"
+            }
+        });
+
+        if (result.isConfirmed) {
+            handleAction(() => deleteTaskAction(taskId));
         }
     };
 
@@ -63,7 +86,7 @@ export function TaskItemActions({ taskId, taskTitle }: { taskId: number, taskTit
                             </Button>
                             <Button
                                 variant="outline"
-                                className="justify-start gap-2 h-11 rounded-xl hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200"
+                                className="justify-start gap-2 h-11 rounded-xl hover:bg-yellow-50 hover:yellow-700 hover:border-yellow-200"
                                 onClick={() => handleAction(() => updateTaskStatusAction(taskId, "In Progress"))}
                                 disabled={isActionLoading}
                             >
@@ -76,11 +99,7 @@ export function TaskItemActions({ taskId, taskTitle }: { taskId: number, taskTit
                             <Button
                                 variant="outline"
                                 className="w-full justify-start gap-3 h-12 rounded-xl border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
-                                onClick={() => {
-                                    if (confirm(`Delete task "${taskTitle}"?`)) {
-                                        handleAction(() => deleteTaskAction(taskId));
-                                    }
-                                }}
+                                onClick={handleDelete}
                                 disabled={isActionLoading}
                             >
                                 {isActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}

@@ -41,14 +41,15 @@ export function Navbar({ isAdmin }: NavbarProps) {
             </div>
 
             <div className="flex items-center gap-6">
-                <div className="relative hidden md:block">
+                <form action="/my-tasks" method="GET" className="relative hidden md:block">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <input
                         type="text"
+                        name="search"
                         placeholder="Search tasks..."
                         className="h-10 w-72 rounded-full border bg-muted/50 pl-10 pr-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-ring/20 focus:border-ring w-64 md:w-80"
                     />
-                </div>
+                </form>
 
                 <div className="flex items-center gap-2">
                     <button className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted transition-all active:scale-95">

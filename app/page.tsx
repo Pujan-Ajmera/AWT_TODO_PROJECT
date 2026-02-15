@@ -6,14 +6,20 @@ import { Sidebar } from "@/components/Sidebar";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 
-export default async function RootPage() {
+export default async function RootPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
   const user = await getCurrentUser();
   const cookieStore = await cookies();
   const session = cookieStore.get("user_session");
 
   if (user) {
     const projects = await prisma.projects.findMany({
-      orderBy: { ProjectName: "asc" },
+      orderBy: { CreatedAt: "desc" },
+      take: 3
     });
 
     return (
@@ -23,7 +29,7 @@ export default async function RootPage() {
           <Sidebar projects={JSON.parse(JSON.stringify(projects))} />
           <main className="flex-1 ml-64 p-8 md:p-12 transition-all">
             <div className="mx-auto max-w-[1400px]">
-              <DashboardView user={user} />
+              <DashboardView user={user} q={q} />
             </div>
           </main>
         </div>

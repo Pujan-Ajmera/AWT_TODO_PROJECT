@@ -37,6 +37,8 @@ interface ProjectViewContainerProps {
         ProjectName: string;
         tasklists: TaskList[];
         users: { UserName: string; Email: string } | null;
+        project_members?: any[];
+        Description?: string | null;
     };
     view: string;
     q?: string;
@@ -133,11 +135,6 @@ export function ProjectViewContainer({ project, view, q }: ProjectViewContainerP
                     </div>
                 ) : view === "files" ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {/* 
-                            Note: We need to fetch attachments for the whole project. 
-                            For now, since we only have tasks in project.tasklists, we'd need to fetch attachments separately.
-                            Or show a message that files are associated with tasks.
-                        */}
                         <div className="col-span-full bg-card p-12 rounded-[2.5rem] border border-dashed flex flex-col items-center justify-center text-center space-y-4">
                             <div className="h-16 w-16 rounded-3xl bg-primary/5 flex items-center justify-center text-primary/40">
                                 <Plus className="h-8 w-8" />
@@ -145,6 +142,57 @@ export function ProjectViewContainer({ project, view, q }: ProjectViewContainerP
                             <div>
                                 <h3 className="text-xl font-bold">Project Files</h3>
                                 <p className="text-muted-foreground max-w-sm">Files are managed within individual tasks. Open a task to view and upload attachments.</p>
+                            </div>
+                        </div>
+                    </div>
+                ) : (view === "details" || !view) ? (
+                    <div className="grid gap-8 lg:grid-cols-3">
+                        <div className="lg:col-span-2 space-y-8">
+                            <div className="bg-card p-8 rounded-[2.5rem] border border-border/50 card-shadow">
+                                <h3 className="text-xl font-bold mb-4">About this Project</h3>
+                                <p className="text-muted-foreground leading-relaxed">
+                                    {project.Description || "No description provided for this project."}
+                                </p>
+                            </div>
+
+                            <div className="bg-card p-8 rounded-[2.5rem] border border-border/50 card-shadow">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="text-xl font-bold">Team Members</h3>
+                                    <span className="text-sm font-medium text-muted-foreground">
+                                        {/* @ts-ignore */}
+                                        {project.project_members?.length || 0} members
+                                    </span>
+                                </div>
+                                <div className="grid sm:grid-cols-2 gap-4">
+                                    {/* @ts-ignore */}
+                                    {project.project_members?.map((member: any) => (
+                                        <div key={member.UserID} className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30 border border-border/50">
+                                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                                {member.users?.UserName?.[0] || "?"}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-sm">{member.users?.UserName}</p>
+                                                <p className="text-xs text-muted-foreground">{member.users?.Email}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-8">
+                            <div className="bg-card p-8 rounded-[2.5rem] border border-border/50 card-shadow">
+                                <h3 className="text-xl font-bold mb-6">Project Info</h3>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between py-2 border-b border-border/50">
+                                        <span className="text-sm text-muted-foreground font-medium">Created By</span>
+                                        <span className="text-sm font-bold">{project.users?.UserName || "Unknown"}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between py-2 border-b border-border/50">
+                                        <span className="text-sm text-muted-foreground font-medium">Total Tasks</span>
+                                        <span className="text-sm font-bold">{project.tasklists.reduce((acc, list) => acc + list.tasks.length, 0)}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

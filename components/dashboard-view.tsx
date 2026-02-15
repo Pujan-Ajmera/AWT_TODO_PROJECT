@@ -17,6 +17,7 @@ import { QuickCreateTask } from "@/components/tasks/quick-create-task";
 import { CaptureNewButton } from "@/components/dashboard/capture-new-button";
 import { TaskItemActions } from "@/components/tasks/task-item-actions";
 import Link from "next/link";
+import { TaskSearchInput } from "./dashboard/task-search-input";
 
 interface DashboardViewProps {
     user: {
@@ -24,9 +25,10 @@ interface DashboardViewProps {
         name: string;
         email: string;
     };
+    q?: string;
 }
 
-export async function DashboardView({ user }: DashboardViewProps) {
+export async function DashboardView({ user, q }: DashboardViewProps) {
     // Fetch stats for the logged-in user
     const [totalTasks, completedTasks, inProgressTasks, overdueTasks] = await Promise.all([
         prisma.tasks.count({ where: { AssignedTo: user.userId } }),
@@ -43,7 +45,14 @@ export async function DashboardView({ user }: DashboardViewProps) {
 
     // Fetch active tasks for the logged-in user
     const activeTasks = await prisma.tasks.findMany({
-        where: { AssignedTo: user.userId, Status: { not: "Completed" } },
+        where: {
+            AssignedTo: user.userId,
+            Status: { not: "Completed" },
+            OR: q ? [
+                { Title: { contains: q } },
+                { Description: { contains: q } }
+            ] : undefined
+        },
         take: 5,
         orderBy: { CreatedAt: "desc" },
         include: {
@@ -132,15 +141,7 @@ export async function DashboardView({ user }: DashboardViewProps) {
                                 <h2 className="text-2xl font-bold tracking-tight">Active Tasks</h2>
                                 <p className="text-muted-foreground text-sm">Your most urgent assignments.</p>
                             </div>
-                            <div className="relative group">
-                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                                <input
-                                    type="text"
-                                    placeholder="Instant filter..."
-                                    className="h-10 w-48 rounded-full border bg-muted/30 pl-10 pr-4 text-sm outline-none transition-all focus:bg-background focus:ring-4 focus:ring-primary/10 focus:w-64"
-                                    aria-label="Filter active tasks"
-                                />
-                            </div>
+                            <TaskSearchInput initialValue={q} />
                         </div>
 
                         <div className="space-y-4">

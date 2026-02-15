@@ -144,13 +144,22 @@ export async function deleteTaskAction(taskId: number) {
     if (!user) throw new Error("Unauthorized");
 
     try {
-        await prisma.tasks.delete({
-            where: { TaskID: taskId }
-        });
+        // Use a transaction to ensure all related records are deleted safely
+        await prisma.$transaction([
+            // Delete related records first to satisfy foreign key constraints
+            prisma.taskcomments.deleteMany({ where: { TaskID: taskId } }),
+            prisma.taskhistory.deleteMany({ where: { TaskID: taskId } }),
+            prisma.taskattachments.deleteMany({ where: { TaskID: taskId } }),
+            // Finally delete the task
+            prisma.tasks.delete({ where: { TaskID: taskId } })
+        ]);
+
+        console.log(`Task ${taskId} and all related records deleted successfully.`);
 
         revalidatePath("/");
         revalidatePath("/my-tasks");
         revalidatePath("/projects");
+        revalidatePath("/search");
         return { success: true };
     } catch (error) {
         console.error("Delete task error:", error);

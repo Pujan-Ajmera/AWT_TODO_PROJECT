@@ -17,7 +17,7 @@ export default function LoginPage() {
                 </div>
 
                 <LoginForm />
-
+                {/* 
                 <div className="relative">
                     <div className="absolute inset-0 flex items-center">
                         <span className="w-full border-t" />
@@ -25,9 +25,9 @@ export default function LoginPage() {
                     <div className="relative flex justify-center text-xs uppercase">
                         <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
                     </div>
-                </div>
+                </div> */}
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* <div className="grid grid-cols-2 gap-4">
                     <button className="flex items-center justify-center gap-2 rounded-lg border bg-background py-2 text-sm font-medium hover:bg-muted transition-colors">
                         <Github className="h-4 w-4" />
                         GitHub
@@ -36,7 +36,7 @@ export default function LoginPage() {
                         <Mail className="h-4 w-4" />
                         Google
                     </button>
-                </div>
+                </div> */}
 
                 <p className="text-center text-sm text-muted-foreground">
                     Don&apos;t have an account?{" "}
