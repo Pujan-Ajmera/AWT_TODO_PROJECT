@@ -20,7 +20,7 @@ export function TaskSearchInput({ initialValue = "" }: { initialValue?: string }
         }
 
         startTransition(() => {
-            router.push(`/?${params.toString()}`);
+            router.push(`/?${params.toString()}`, { scroll: false });
         });
     }, [debouncedValue, router]);
 

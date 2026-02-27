@@ -19,7 +19,7 @@ export function UserSearch() {
             params.delete("q");
         }
         startTransition(() => {
-            router.replace(`${pathname}?${params.toString()}`);
+            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
         });
     };
 
@@ -28,8 +28,6 @@ export function UserSearch() {
             handleSearch();
         }
     };
-
-    // Sync local state if URL changes externally
     useEffect(() => {
         setValue(searchParams.get("q") || "");
     }, [searchParams]);

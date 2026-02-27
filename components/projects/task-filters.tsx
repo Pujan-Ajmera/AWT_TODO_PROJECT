@@ -18,7 +18,7 @@ export function TaskFilters({ priority, status }: TaskFiltersProps) {
         } else {
             params.delete(key);
         }
-        router.push(`?${params.toString()}`);
+        router.push(`?${params.toString()}`, { scroll: false });
     };
 
     return (
