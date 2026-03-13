@@ -9,6 +9,7 @@ const taskSchema = z.object({
     description: z.string().optional(),
     priority: z.enum(["Low", "Medium", "High"]).optional(),
     listId: z.number().optional(),
+    projectId: z.number().optional(),
     dueDate: z.string().optional().nullable(),
 });
 
@@ -23,8 +24,23 @@ export async function GET(request: Request) {
         const priority = searchParams.get("priority");
         const search = searchParams.get("search");
 
-        const where: any = {
-            AssignedTo: user.userId,
+        // Check if user is admin
+        const userRoles = await prisma.userroles.findMany({
+            where: { UserID: user.userId },
+            include: { roles: true }
+        });
+        const isAdmin = userRoles.some(ur => ur.roles?.RoleName === "Admin");
+
+        const where: any = isAdmin ? {} : {
+            tasklists: {
+                projects: {
+                    project_members: {
+                        some: {
+                            UserID: user.userId
+                        }
+                    }
+                }
+            }
         };
 
         if (listId) where.ListID = parseInt(listId);
@@ -62,13 +78,49 @@ export async function POST(request: Request) {
         const body = await request.json();
         const data = taskSchema.parse(body);
 
+        // Check if user is admin
+        const userRoles = await prisma.userroles.findMany({
+            where: { UserID: user.userId },
+            include: { roles: true }
+        });
+        const isAdmin = userRoles.some(ur => ur.roles?.RoleName === "Admin");
+
+        if (!isAdmin) {
+            throw new ApiError("Forbidden: Only admins can create tasks", 403);
+        }
+
+        let listId = data.listId;
+
+        if (!listId && data.projectId) {
+            const generalList = await prisma.tasklists.findFirst({
+                where: {
+                    ProjectID: data.projectId,
+                    ListName: "General"
+                }
+            });
+
+            if (!generalList) {
+                const firstList = await prisma.tasklists.findFirst({
+                    where: { ProjectID: data.projectId }
+                });
+                if (!firstList) throw new ApiError("This project has no task lists", 400);
+                listId = firstList.ListID;
+            } else {
+                listId = generalList.ListID;
+            }
+        }
+
+        if (!listId) {
+            throw new ApiError("Project or List selection is required", 400);
+        }
+
         const task = await prisma.tasks.create({
             data: {
                 Title: data.title,
                 Description: data.description,
                 Priority: data.priority || "Medium",
                 Status: "Pending",
-                ListID: data.listId,
+                ListID: listId,
                 AssignedTo: user.userId,
                 DueDate: data.dueDate ? new Date(data.dueDate) : null,
             }

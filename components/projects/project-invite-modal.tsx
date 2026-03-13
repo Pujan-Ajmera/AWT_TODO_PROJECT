@@ -29,12 +29,26 @@ export function ProjectInviteModal({ isOpen, onClose, projectId }: ProjectInvite
     const [isLoading, setIsLoading] = useState(true);
     const [isInviting, setIsInviting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [allUsers, setAllUsers] = useState<{ UserName: string, Email: string }[]>([]);
 
     useEffect(() => {
         if (isOpen) {
             fetchMembers();
+            fetchAllUsers();
         }
     }, [isOpen]);
+
+    const fetchAllUsers = async () => {
+        try {
+            const response = await fetch("/api/users");
+            if (response.ok) {
+                const data = await response.json();
+                setAllUsers(data);
+            }
+        } catch (err) {
+            console.error("Fetch users error:", err);
+        }
+    };
 
     const fetchMembers = async () => {
         setIsLoading(true);
@@ -106,8 +120,14 @@ export function ProjectInviteModal({ isOpen, onClose, projectId }: ProjectInvite
                             onChange={(e) => setEmail(e.target.value)}
                             className="pl-10 rounded-xl"
                             type="email"
+                            list="user-emails"
                             required
                         />
+                        <datalist id="user-emails">
+                            {allUsers.map((u) => (
+                                <option key={u.Email} value={u.Email}>{u.UserName}</option>
+                            ))}
+                        </datalist>
                     </div>
                     <Button type="submit" disabled={isInviting} className="rounded-xl">
                         {isInviting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Invite"}
@@ -121,7 +141,12 @@ export function ProjectInviteModal({ isOpen, onClose, projectId }: ProjectInvite
                 )}
 
                 <div className="space-y-3">
-                    <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Team Members</h4>
+                    <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Team Members</h4>
+                        <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            {members.length} {members.length === 1 ? 'Member' : 'Members'}
+                        </span>
+                    </div>
                     <div className="grid gap-2">
                         {isLoading ? (
                             <div className="py-8 flex justify-center">

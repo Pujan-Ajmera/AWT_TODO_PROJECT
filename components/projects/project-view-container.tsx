@@ -14,6 +14,8 @@ import {
     Layout,
     ChevronDown
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ProjectInviteModal } from "./project-invite-modal";
 
 interface Task {
     TaskID: number;
@@ -39,14 +41,19 @@ interface ProjectViewContainerProps {
         users: { UserName: string; Email: string } | null;
         project_members?: any[];
         Description?: string | null;
+        _count?: {
+            project_members: number;
+        };
     };
     view: string;
     q?: string;
+    isAdmin?: boolean;
 }
 
-export function ProjectViewContainer({ project, view, q }: ProjectViewContainerProps) {
+export function ProjectViewContainer({ project, view, q, isAdmin = false }: ProjectViewContainerProps) {
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
 
     const handleTaskClick = (task: Task) => {
         setSelectedTask(task);
@@ -57,7 +64,7 @@ export function ProjectViewContainer({ project, view, q }: ProjectViewContainerP
         <div className="h-full flex flex-col space-y-6">
             <div className="flex-1 overflow-x-auto pb-8 scrollbar-hide">
                 {view === "kanban" ? (
-                    <KanbanBoard project={project} onTaskClick={handleTaskClick} />
+                    <KanbanBoard project={project} onTaskClick={handleTaskClick} isAdmin={isAdmin} />
                 ) : view === "list" ? (
                     <div className="bg-card rounded-[2.5rem] border border-border/50 overflow-hidden card-shadow">
                         <table className="w-full text-left border-collapse">
@@ -113,7 +120,7 @@ export function ProjectViewContainer({ project, view, q }: ProjectViewContainerP
                                                 <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary border border-primary/20">
                                                     {task.users?.UserName?.[0] || "?"}
                                                 </div>
-                                                <span className="text-sm font-medium">{task.users?.UserName || "Unassigned"}</span>
+                                                <span className="text-sm font-medium">{task.users?.UserName || "System"}</span>
                                             </div>
                                         </td>
                                         <td className="px-8 py-5">
@@ -158,11 +165,26 @@ export function ProjectViewContainer({ project, view, q }: ProjectViewContainerP
                             <div className="bg-card p-8 rounded-[2.5rem] border border-border/50 card-shadow">
                                 <div className="flex items-center justify-between mb-6">
                                     <h3 className="text-xl font-bold">Team Members</h3>
+                                    {isAdmin && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="rounded-xl font-bold h-9 gap-2 shadow-sm"
+                                            onClick={() => setIsInviteModalOpen(true)}
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                            Manage
+                                        </Button>
+                                    )}
                                     <span className="text-sm font-medium text-muted-foreground">
-                                        {/* @ts-ignore */}
-                                        {project.project_members?.length || 0} members
+                                        {project._count?.project_members || project.project_members?.length || 0} {(project._count?.project_members || project.project_members?.length) === 1 ? 'member' : 'members'}
                                     </span>
                                 </div>
+                                <ProjectInviteModal
+                                    isOpen={isInviteModalOpen}
+                                    onClose={() => setIsInviteModalOpen(false)}
+                                    projectId={project.ProjectID}
+                                />
                                 <div className="grid sm:grid-cols-2 gap-4">
                                     {/* @ts-ignore */}
                                     {project.project_members?.map((member: any) => (
@@ -231,6 +253,7 @@ export function ProjectViewContainer({ project, view, q }: ProjectViewContainerP
                 task={selectedTask}
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
+                isAdmin={isAdmin}
             />
         </div>
     );

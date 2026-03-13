@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { TaskItemActions } from "@/components/tasks/task-item-actions";
+import { TaskSearchClient } from "./task-search-client";
 
 export default async function MyTasksPage({
     searchParams,
@@ -27,8 +28,23 @@ export default async function MyTasksPage({
     const currentPage = parseInt(page || "1");
     const pageSize = 5;
 
-    const where: any = {
-        AssignedTo: user.userId,
+    // Check if user is admin
+    const userRoles = await prisma.userroles.findMany({
+        where: { UserID: user.userId },
+        include: { roles: true }
+    });
+    const isAdmin = userRoles.some(ur => ur.roles?.RoleName === "Admin");
+
+    const where: any = isAdmin ? {} : {
+        tasklists: {
+            projects: {
+                project_members: {
+                    some: {
+                        UserID: user.userId
+                    }
+                }
+            }
+        }
     };
 
     if (status) where.Status = status;
@@ -80,17 +96,7 @@ export default async function MyTasksPage({
                     <p className="text-muted-foreground text-lg">Focus on what's assigned to you.</p>
                 </div>
                 <div className="flex flex-col gap-4 items-end">
-                    <form action="/my-tasks" className="relative group w-full md:w-64">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary" />
-                        <input
-                            type="text"
-                            name="search"
-                            defaultValue={search}
-                            placeholder="Search tasks..."
-                            className="h-10 w-full rounded-full border bg-muted/30 pl-10 pr-4 text-sm outline-none transition-all focus:bg-background focus:ring-4 focus:ring-primary/10"
-                        />
-                        {status && <input type="hidden" name="status" value={status} />}
-                    </form>
+                    <TaskSearchClient />
                     <div className="flex gap-2 bg-muted/30 p-1 rounded-2xl border border-border/50 backdrop-blur-md">
                         {statusFilters.map((f) => (
                             <Link
@@ -172,7 +178,7 @@ export default async function MyTasksPage({
                             )}>
                                 {task.Status}
                             </div>
-                            <TaskItemActions taskId={task.TaskID} taskTitle={task.Title} />
+                            <TaskItemActions taskId={task.TaskID} taskTitle={task.Title} isAdmin={isAdmin} />
                         </div>
                     </div>
                 ))}

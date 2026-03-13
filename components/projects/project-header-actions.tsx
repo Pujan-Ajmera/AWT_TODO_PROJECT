@@ -12,9 +12,10 @@ interface ProjectHeaderActionsProps {
         Description: string | null;
     };
     members: any[];
+    isAdmin?: boolean;
 }
 
-export function ProjectHeaderActions({ project, members }: ProjectHeaderActionsProps) {
+export function ProjectHeaderActions({ project, members, isAdmin = false }: ProjectHeaderActionsProps) {
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -34,19 +35,23 @@ export function ProjectHeaderActions({ project, members }: ProjectHeaderActionsP
                     )}
                 </div>
                 <div className="h-8 w-[1px] bg-border mx-2" />
-                <button
-                    onClick={() => setIsInviteOpen(true)}
-                    className="flex items-center gap-2 rounded-xl border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted transition-all active:scale-95 shadow-sm"
-                >
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    Invite
-                </button>
-                <button
-                    onClick={() => setIsSettingsOpen(true)}
-                    className="p-2.5 rounded-xl border bg-card hover:bg-muted transition-all active:scale-95 shadow-sm"
-                >
-                    <SettingsIcon className="h-5 w-5 text-muted-foreground" />
-                </button>
+                {isAdmin && (
+                    <>
+                        <button
+                            onClick={() => setIsInviteOpen(true)}
+                            className="flex items-center gap-2 rounded-xl border bg-card px-4 py-2 text-sm font-semibold hover:bg-muted transition-all active:scale-95 shadow-sm"
+                        >
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            Invite
+                        </button>
+                        <button
+                            onClick={() => setIsSettingsOpen(true)}
+                            className="p-2.5 rounded-xl border bg-card hover:bg-muted transition-all active:scale-95 shadow-sm"
+                        >
+                            <SettingsIcon className="h-5 w-5 text-muted-foreground" />
+                        </button>
+                    </>
+                )}
             </div>
 
             <ProjectInviteModal

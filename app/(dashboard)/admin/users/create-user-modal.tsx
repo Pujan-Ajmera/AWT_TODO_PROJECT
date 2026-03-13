@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { UserPlus, X, Loader2, Shield } from "lucide-react";
 import { createUserAction } from "@/app/actions/admin";
 import { cn } from "@/lib/utils";
@@ -12,17 +13,31 @@ interface Role {
 
 export function CreateUserModal({ roles }: { roles: Role[] }) {
     const [isOpen, setIsOpen] = useState(false);
-    const [state, action, isPending] = useActionState(
-        async (prevState: any, formData: FormData) => {
-            const res = await createUserAction(prevState, formData);
-            return res;
-        },
-        null
-    );
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const router = useRouter();
 
-    if (state?.success && isOpen) {
-        setIsOpen(false);
-    }
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError(null);
+
+        const formData = new FormData(e.currentTarget);
+        
+        try {
+            const res = await createUserAction(null, formData);
+            if (res?.success) {
+                setIsOpen(false);
+                router.refresh();
+            } else {
+                setError(res?.error || "Failed to create user");
+            }
+        } catch (err) {
+            setError("Something went wrong. Please try again.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <>
@@ -55,10 +70,10 @@ export function CreateUserModal({ roles }: { roles: Role[] }) {
                             </button>
                         </div>
 
-                        <form action={action} className="space-y-4">
-                            {state?.error && (
-                                <div className="p-3 rounded-xl bg-red-50 text-red-600 text-xs font-bold border border-red-100">
-                                    {state.error}
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            {error && (
+                                <div className="p-3 rounded-xl bg-red-50 text-red-600 text-xs font-bold border border-red-100 italic">
+                                    {error}
                                 </div>
                             )}
 
@@ -102,10 +117,10 @@ export function CreateUserModal({ roles }: { roles: Role[] }) {
                             <div className="pt-4">
                                 <button
                                     type="submit"
-                                    disabled={isPending}
+                                    disabled={isLoading}
                                     className="w-full h-12 rounded-2xl bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 hover:opacity-90 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
-                                    {isPending ? (
+                                    {isLoading ? (
                                         <>
                                             <Loader2 className="h-5 w-5 animate-spin" />
                                             Adding User...

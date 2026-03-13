@@ -8,6 +8,17 @@ export async function createProjectAction(formData: FormData) {
     const user = await getCurrentUser();
     if (!user) throw new Error("Unauthorized");
 
+    // Check if user is admin
+    const userRoles = await prisma.userroles.findMany({
+        where: { UserID: user.userId },
+        include: { roles: true }
+    });
+    const isAdmin = userRoles.some(ur => ur.roles?.RoleName === "Admin");
+
+    if (!isAdmin) {
+        return { error: "Permission denied. Only admins can create projects." };
+    }
+
     const name = formData.get("name") as string;
     const description = formData.get("description") as string;
 
@@ -16,12 +27,24 @@ export async function createProjectAction(formData: FormData) {
     }
 
     try {
-        const project = await prisma.projects.create({
-            data: {
-                ProjectName: name,
-                Description: description,
-                CreatedBy: user.userId,
-            }
+        const project = await prisma.$transaction(async (tx) => {
+            const newProject = await tx.projects.create({
+                data: {
+                    ProjectName: name,
+                    Description: description,
+                    CreatedBy: user.userId,
+                }
+            });
+
+            // Create default task list
+            await tx.tasklists.create({
+                data: {
+                    ProjectID: newProject.ProjectID,
+                    ListName: "General"
+                }
+            });
+
+            return newProject;
         });
 
         revalidatePath("/projects");
@@ -39,7 +62,14 @@ export async function deleteProjectAction(projectId: number) {
 
     try {
         const project = await prisma.projects.findUnique({
-            where: { ProjectID: projectId }
+            where: { ProjectID: projectId },
+            include: {
+                tasklists: {
+                    include: {
+                        tasks: true
+                    }
+                }
+            }
         });
 
         if (!project) {
@@ -59,9 +89,23 @@ export async function deleteProjectAction(projectId: number) {
             return { error: "Permission denied. Only the project creator or an admin can delete this project." };
         }
 
-        await prisma.projects.delete({
-            where: { ProjectID: projectId }
-        });
+        const listIds = project.tasklists.map(l => l.ListID);
+        const taskIds = project.tasklists.flatMap(l => l.tasks.map(t => t.TaskID));
+
+        await prisma.$transaction([
+            // Delete related task data
+            prisma.taskcomments.deleteMany({ where: { TaskID: { in: taskIds } } }),
+            prisma.taskhistory.deleteMany({ where: { TaskID: { in: taskIds } } }),
+            prisma.taskattachments.deleteMany({ where: { TaskID: { in: taskIds } } }),
+            // Delete tasks
+            prisma.tasks.deleteMany({ where: { ListID: { in: listIds } } }),
+            // Delete task lists
+            prisma.tasklists.deleteMany({ where: { ProjectID: projectId } }),
+            // Delete project members (though schema says cascade, being explicit is fine)
+            prisma.project_members.deleteMany({ where: { ProjectID: projectId } }),
+            // Finally delete the project
+            prisma.projects.delete({ where: { ProjectID: projectId } })
+        ]);
 
         revalidatePath("/projects");
         revalidatePath("/");
@@ -100,9 +144,25 @@ export async function deleteTaskListAction(listId: number) {
     if (!user) throw new Error("Unauthorized");
 
     try {
-        await prisma.tasklists.delete({
-            where: { ListID: listId }
+        const list = await prisma.tasklists.findUnique({
+            where: { ListID: listId },
+            include: { tasks: true }
         });
+
+        if (!list) return { error: "Task list not found" };
+
+        const taskIds = list.tasks.map(t => t.TaskID);
+
+        await prisma.$transaction([
+            // Delete related task data
+            prisma.taskcomments.deleteMany({ where: { TaskID: { in: taskIds } } }),
+            prisma.taskhistory.deleteMany({ where: { TaskID: { in: taskIds } } }),
+            prisma.taskattachments.deleteMany({ where: { TaskID: { in: taskIds } } }),
+            // Delete tasks
+            prisma.tasks.deleteMany({ where: { ListID: listId } }),
+            // Finally delete the list
+            prisma.tasklists.delete({ where: { ListID: listId } })
+        ]);
 
         revalidatePath("/");
         revalidatePath("/projects");

@@ -30,18 +30,23 @@ interface TaskDetailSidebarProps {
     task: any; // Task object with comments and history
     isOpen: boolean;
     onClose: () => void;
+    isAdmin?: boolean;
 }
 
-export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarProps) {
+export function TaskDetailSidebar({ task, isOpen, onClose, isAdmin = false }: TaskDetailSidebarProps) {
     const router = useRouter();
     const [comment, setComment] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [attachments, setAttachments] = useState<any[]>([]);
     const [isUploading, setIsUploading] = useState(false);
+    const [comments, setComments] = useState<any[]>([]);
+    const [history, setHistory] = useState<any[]>([]);
 
     useEffect(() => {
         if (task && isOpen) {
             fetchAttachments();
+            fetchComments();
+            fetchHistory();
         }
     }, [task, isOpen]);
 
@@ -54,6 +59,30 @@ export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarPr
             }
         } catch (error) {
             console.error("Fetch attachments error:", error);
+        }
+    };
+
+    const fetchComments = async () => {
+        try {
+            const response = await fetch(`/api/tasks/${task.TaskID}/comments`);
+            if (response.ok) {
+                const data = await response.json();
+                setComments(data);
+            }
+        } catch (error) {
+            console.error("Fetch comments error:", error);
+        }
+    };
+
+    const fetchHistory = async () => {
+        try {
+            const response = await fetch(`/api/tasks/${task.TaskID}/history`);
+            if (response.ok) {
+                const data = await response.json();
+                setHistory(data);
+            }
+        } catch (error) {
+            console.error("Fetch history error:", error);
         }
     };
 
@@ -74,7 +103,8 @@ export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarPr
 
             if (response.ok) {
                 setComment("");
-                // Trigger a refresh since we're using SSR/server components mostly but components are client
+                fetchComments();
+                fetchHistory();
                 router.refresh();
             }
         } catch (error) {
@@ -223,14 +253,16 @@ export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarPr
                         <span className="text-sm font-black uppercase tracking-widest text-muted-foreground">TASK-{task.TaskID}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleDelete}
-                            disabled={isSubmitting}
-                            className="p-2 rounded-full hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
-                            title="Delete Task"
-                        >
-                            <Trash2 className="h-5 w-5" />
-                        </button>
+                        {isAdmin && (
+                            <button
+                                onClick={handleDelete}
+                                disabled={isSubmitting}
+                                className="p-2 rounded-full hover:bg-red-50 text-muted-foreground hover:text-red-600 transition-colors"
+                                title="Delete Task"
+                            >
+                                <Trash2 className="h-5 w-5" />
+                            </button>
+                        )}
                         <button
                             onClick={onClose}
                             className="p-2 rounded-full hover:bg-muted transition-colors"
@@ -279,12 +311,12 @@ export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarPr
                     {/* Meta Data */}
                     <div className="grid grid-cols-2 gap-8 py-6 border-y border-border/10">
                         <div className="space-y-2">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Assignee</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Created By</p>
                             <div className="flex items-center gap-3">
                                 <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary border border-primary/20">
                                     {task.users?.UserName?.[0] || "?"}
                                 </div>
-                                <span className="text-sm font-bold">{task.users?.UserName || "Unassigned"}</span>
+                                <span className="text-sm font-bold">{task.users?.UserName || "System"}</span>
                             </div>
                         </div>
                         <div className="space-y-2">
@@ -341,8 +373,34 @@ export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarPr
                         </div>
                     </div>
 
-                    {/* Timeline / Activity */}
-                    <div className="space-y-6 pt-6">
+                    {/* Comments */}
+                    <div className="space-y-6">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                            <MessageSquare className="h-3 w-3" /> Comments ({comments.length})
+                        </p>
+                        <div className="space-y-4">
+                            {comments.map((c) => (
+                                <div key={c.CommentID} className="bg-muted/30 p-4 rounded-2xl border border-border/10 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-[8px] font-black text-primary uppercase">
+                                                {c.users?.UserName?.[0] || "?"}
+                                            </div>
+                                            <span className="text-xs font-bold">{c.users?.UserName}</span>
+                                        </div>
+                                        <span className="text-[10px] text-muted-foreground font-medium">
+                                            {new Date(c.CreatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                        </span>
+                                    </div>
+                                    <p className="text-sm font-medium text-muted-foreground">{c.CommentText}</p>
+                                </div>
+                            ))}
+                            {comments.length === 0 && (
+                                <p className="text-xs text-muted-foreground italic pl-2">No comments yet. Start the conversation!</p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="space-y-6 pt-6 mb-20">
                         <div className="flex items-center justify-between">
                             <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
                                 <History className="h-5 w-5 text-primary" />
@@ -351,14 +409,22 @@ export function TaskDetailSidebar({ task, isOpen, onClose }: TaskDetailSidebarPr
                         </div>
                         <div className="space-y-6 relative ml-3">
                             <div className="absolute left-0 top-2 bottom-2 w-0.5 bg-muted rounded-full" />
-                            {/* Placeholder Activity */}
-                            <div className="relative pl-6">
-                                <div className="absolute left-[-5px] top-1.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />
-                                <p className="text-xs">
-                                    <span className="font-bold">System</span> created this task
-                                </p>
-                                <p className="text-[10px] text-muted-foreground mt-1 font-bold">{new Date().toLocaleString()}</p>
-                            </div>
+                            {history.length > 0 ? history.map((h) => (
+                                <div key={h.HistoryID} className="relative pl-6">
+                                    <div className="absolute left-[-5px] top-1.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />
+                                    <p className="text-xs">
+                                        <span className="font-bold">{h.users?.UserName || "System"}</span> {h.ChangeType}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground mt-1 font-bold">
+                                        {new Date(h.ChangeTime).toLocaleString()}
+                                    </p>
+                                </div>
+                            )) : (
+                                <div className="relative pl-6">
+                                    <div className="absolute left-[-5px] top-1.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-background" />
+                                    <p className="text-xs text-muted-foreground">No activity recorded yet.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

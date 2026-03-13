@@ -1,21 +1,22 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { handleApiError, ApiError } from "@/lib/api-utils";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { v4 as uuidv4 } from "uuid";
 
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const user = await getCurrentUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        if (!user) throw new ApiError("Unauthorized", 401);
 
-        const taskId = parseInt(params.id);
+        const { id } = await params;
+        const taskId = parseInt(id);
+        if (isNaN(taskId)) throw new ApiError("Invalid Task ID", 400);
         const attachments = await prisma.taskattachments.findMany({
             where: { TaskID: taskId },
             include: {
@@ -28,22 +29,21 @@ export async function GET(
 
         return NextResponse.json(attachments);
     } catch (error) {
-        console.error("GET attachments error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return handleApiError(error);
     }
 }
 
 export async function POST(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const user = await getCurrentUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        if (!user) throw new ApiError("Unauthorized", 401);
 
-        const taskId = parseInt(params.id);
+        const { id } = await params;
+        const taskId = parseInt(id);
+        if (isNaN(taskId)) throw new ApiError("Invalid Task ID", 400);
         const formData = await request.formData();
         const file = formData.get("file") as File;
 
@@ -86,7 +86,6 @@ export async function POST(
 
         return NextResponse.json(attachment, { status: 201 });
     } catch (error) {
-        console.error("POST attachment error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return handleApiError(error);
     }
 }

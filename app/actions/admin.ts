@@ -61,9 +61,37 @@ export async function deleteUserAction(targetUserId: number) {
     }
 
     try {
-        await prisma.userroles.deleteMany({ where: { UserID: targetUserId } });
-        await prisma.tasks.deleteMany({ where: { AssignedTo: targetUserId } });
-        await prisma.users.delete({ where: { UserID: targetUserId } });
+        const tasksAssignedToUser = await prisma.tasks.findMany({
+            where: { AssignedTo: targetUserId },
+            select: { TaskID: true }
+        });
+        const assignedTaskIds = tasksAssignedToUser.map(t => t.TaskID);
+
+        await prisma.$transaction([
+            // 1. Clean up task-related data for tasks assigned to this user
+            prisma.taskcomments.deleteMany({ where: { TaskID: { in: assignedTaskIds } } }),
+            prisma.taskhistory.deleteMany({ where: { TaskID: { in: assignedTaskIds } } }),
+            prisma.taskattachments.deleteMany({ where: { TaskID: { in: assignedTaskIds } } }),
+            prisma.tasks.deleteMany({ where: { AssignedTo: targetUserId } }),
+
+            // 2. Clean up user-authored content
+            prisma.taskcomments.deleteMany({ where: { UserID: targetUserId } }),
+            prisma.taskhistory.deleteMany({ where: { ChangedBy: targetUserId } }),
+            prisma.taskattachments.deleteMany({ where: { UploadedBy: targetUserId } }),
+            
+            // 3. Clean up roles and memberships
+            prisma.userroles.deleteMany({ where: { UserID: targetUserId } }),
+            prisma.project_members.deleteMany({ where: { UserID: targetUserId } }),
+
+            // 4. Handle projects created by the user (nullify reference)
+            prisma.projects.updateMany({
+                where: { CreatedBy: targetUserId },
+                data: { CreatedBy: null }
+            }),
+
+            // 5. Finally delete the user
+            prisma.users.delete({ where: { UserID: targetUserId } })
+        ]);
 
         revalidatePath("/admin/users");
         return { success: true };

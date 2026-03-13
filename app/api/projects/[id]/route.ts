@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { handleApiError, ApiError } from "@/lib/api-utils";
 
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const user = await getCurrentUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        if (!user) throw new ApiError("Unauthorized", 401);
 
-        const projectId = parseInt(params.id);
+        const { id } = await params;
+        const projectId = parseInt(id);
+        if (isNaN(projectId)) throw new ApiError("Invalid Project ID", 400);
 
         const project = await prisma.projects.findUnique({
             where: { ProjectID: projectId },
@@ -34,6 +35,9 @@ export async function GET(
                             }
                         }
                     }
+                },
+                _count: {
+                    select: { project_members: true }
                 }
             }
         });
@@ -44,22 +48,21 @@ export async function GET(
 
         return NextResponse.json(project);
     } catch (error) {
-        console.error("GET project error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return handleApiError(error);
     }
 }
 
 export async function PATCH(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const user = await getCurrentUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        if (!user) throw new ApiError("Unauthorized", 401);
 
-        const projectId = parseInt(params.id);
+        const { id } = await params;
+        const projectId = parseInt(id);
+        if (isNaN(projectId)) throw new ApiError("Invalid Project ID", 400);
         const body = await request.json();
         const { name, description } = body;
 
@@ -73,22 +76,21 @@ export async function PATCH(
 
         return NextResponse.json(updatedProject);
     } catch (error) {
-        console.error("PATCH project error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return handleApiError(error);
     }
 }
 
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const user = await getCurrentUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        if (!user) throw new ApiError("Unauthorized", 401);
 
-        const projectId = parseInt(params.id);
+        const { id } = await params;
+        const projectId = parseInt(id);
+        if (isNaN(projectId)) throw new ApiError("Invalid Project ID", 400);
 
         const project = await prisma.projects.findUnique({
             where: { ProjectID: projectId }
@@ -115,7 +117,6 @@ export async function DELETE(
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("DELETE project error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return handleApiError(error);
     }
 }

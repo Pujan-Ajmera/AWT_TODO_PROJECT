@@ -15,21 +15,62 @@ export async function createTaskAction(formData: FormData) {
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
     const priority = formData.get("priority") as string;
-    const listId = formData.get("listId") ? parseInt(formData.get("listId") as string) : null;
+    const listIdStr = formData.get("listId") as string;
+    const projectIdStr = formData.get("projectId") as string;
     const dueDate = formData.get("dueDate") ? new Date(formData.get("dueDate") as string) : null;
 
     if (!title) {
         return { error: "Title is required" };
     }
 
+    let listId = listIdStr ? parseInt(listIdStr) : null;
+    const projectId = projectIdStr ? parseInt(projectIdStr) : null;
+
+    if (!listId && !projectId) {
+        return { error: "Project selection is mandatory" };
+    }
+
     try {
+        // Check if user is admin
+        const userRoles = await prisma.userroles.findMany({
+            where: { UserID: user.userId },
+            include: { roles: true }
+        });
+        const isAdmin = userRoles.some(ur => ur.roles?.RoleName === "Admin");
+
+        if (!isAdmin) {
+            return { error: "Forbidden: Only admins can create tasks" };
+        }
+
+        // If projectId is provided, find the "General" list for that project
+        if (!listId && projectId) {
+            const generalList = await prisma.tasklists.findFirst({
+                where: {
+                    ProjectID: projectId,
+                    ListName: "General"
+                }
+            });
+
+            if (!generalList) {
+                // If no "General" list exists, find the first available list or throw error
+                const firstList = await prisma.tasklists.findFirst({
+                    where: { ProjectID: projectId }
+                });
+
+                if (!firstList) return { error: "This project has no task lists" };
+                listId = firstList.ListID;
+            } else {
+                listId = generalList.ListID;
+            }
+        }
+
         const createdTask = await prisma.tasks.create({
             data: {
                 Title: title,
                 Description: description,
                 Priority: priority || "Medium",
                 Status: "Pending",
-                ListID: listId,
+                ListID: listId!,
                 AssignedTo: user.userId,
                 DueDate: dueDate,
             }
@@ -39,6 +80,8 @@ export async function createTaskAction(formData: FormData) {
         revalidatePath("/");
         revalidatePath("/my-tasks");
         revalidatePath("/projects");
+        if (projectId) revalidatePath(`/projects/${projectId}`);
+        
         return { success: true };
     } catch (error) {
         console.error("Create task error:", error);

@@ -14,6 +14,7 @@ import Link from "next/link";
 import { ProjectViewContainer } from "@/components/projects/project-view-container";
 import { TaskFilters } from "@/components/projects/task-filters";
 import { ProjectHeaderActions } from "@/components/projects/project-header-actions";
+import { ProjectDetailSearchClient } from "./project-detail-search-client";
 import { cn } from "@/lib/utils";
 
 export default async function ProjectDetailPage({
@@ -30,6 +31,14 @@ export default async function ProjectDetailPage({
     const { q, priority, status, view = "details" } = await searchParams;
     const projectId = parseInt(id);
 
+    // Check if user is admin
+    const userRoles = await prisma.userroles.findMany({
+        where: { UserID: user.userId },
+        include: { roles: true }
+    });
+    const isAdmin = userRoles.some(ur => ur.roles?.RoleName === "Admin");
+
+    // Fetch project with membership check
     const project = await prisma.projects.findUnique({
         where: { ProjectID: projectId },
         include: {
@@ -38,6 +47,7 @@ export default async function ProjectDetailPage({
                     tasks: {
                         where: {
                             AND: [
+                                !isAdmin ? { AssignedTo: user.userId } : {},
                                 q ? {
                                     OR: [
                                         { Title: { contains: q } },
@@ -74,6 +84,14 @@ export default async function ProjectDetailPage({
         notFound();
     }
 
+    // Authorization check
+    const isMember = project.project_members.some(m => m.UserID === user.userId);
+    const isCreator = project.CreatedBy === user.userId;
+
+    if (!isAdmin && !isMember && !isCreator) {
+        redirect("/projects");
+    }
+
     // Cast project to any for now to avoid complex Prisma type issues with the container
     const projectData = project as any;
 
@@ -101,6 +119,7 @@ export default async function ProjectDetailPage({
                         Description: project.Description
                     }}
                     members={project.project_members}
+                    isAdmin={isAdmin}
                 />
             </header>
 
@@ -154,27 +173,12 @@ export default async function ProjectDetailPage({
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <div className="relative group">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                        <form action={`/projects/${id}`} method="GET">
-                            <input
-                                name="q"
-                                type="text"
-                                defaultValue={q}
-                                placeholder="Find tasks..."
-                                className="h-9 w-48 rounded-full border bg-muted/20 pl-9 pr-4 text-xs outline-none focus:bg-background focus:ring-4 focus:ring-primary/10 transition-all focus:w-64"
-                            />
-                            <input type="hidden" name="view" value={view} />
-                            {priority && <input type="hidden" name="priority" value={priority} />}
-                            {status && <input type="hidden" name="status" value={status} />}
-                        </form>
-                    </div>
-
+                    <ProjectDetailSearchClient projectId={id} />
                     <TaskFilters priority={priority} status={status} />
                 </div>
             </div>
 
-            <ProjectViewContainer project={projectData} view={view} q={q} />
+            <ProjectViewContainer project={projectData} view={view} q={q} isAdmin={isAdmin} />
         </div>
     );
 }

@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { handleApiError, ApiError } from "@/lib/api-utils";
 
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const user = await getCurrentUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        if (!user) throw new ApiError("Unauthorized", 401);
 
-        const taskId = parseInt(params.id);
+        const { id } = await params;
+        const taskId = parseInt(id);
 
         const task = await prisma.tasks.findUnique({
             where: { TaskID: taskId },
@@ -56,15 +56,14 @@ export async function GET(
 
 export async function PATCH(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const user = await getCurrentUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        if (!user) throw new ApiError("Unauthorized", 401);
 
-        const taskId = parseInt(params.id);
+        const { id } = await params;
+        const taskId = parseInt(id);
         const body = await request.json();
         const { title, description, priority, status, dueDate, listId } = body;
 
@@ -98,15 +97,14 @@ export async function PATCH(
 
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const user = await getCurrentUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        if (!user) throw new ApiError("Unauthorized", 401);
 
-        const taskId = parseInt(params.id);
+        const { id } = await params;
+        const taskId = parseInt(id);
 
         await prisma.tasks.delete({
             where: { TaskID: taskId }

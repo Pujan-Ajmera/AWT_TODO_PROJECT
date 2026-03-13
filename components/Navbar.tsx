@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { Bell, Search, User, Settings, LogOut, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { DebouncedSearchInput } from "./debounced-search-input";
 
 interface NavbarProps {
     isAdmin?: boolean;
@@ -11,6 +12,20 @@ interface NavbarProps {
 
 export function Navbar({ isAdmin }: NavbarProps) {
     const pathname = usePathname();
+    const router = useRouter();
+
+    const searchParams = useSearchParams();
+    const currentSearch = searchParams.get("search") || "";
+
+    const handleSearch = (value: string) => {
+        if (value === currentSearch) return;
+
+        if (value.trim()) {
+            router.push(`/my-tasks?search=${encodeURIComponent(value)}`);
+        } else if (pathname === "/my-tasks" || currentSearch) {
+            router.push("/my-tasks");
+        }
+    };
 
     return (
         <nav className="sticky top-0 z-50 flex h-16 w-full items-center justify-between border-b bg-background/80 px-6 backdrop-blur-md">
@@ -41,15 +56,11 @@ export function Navbar({ isAdmin }: NavbarProps) {
             </div>
 
             <div className="flex items-center gap-6">
-                <form action="/my-tasks" method="GET" className="relative hidden md:block">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                        type="text"
-                        name="search"
-                        placeholder="Search tasks..."
-                        className="h-10 w-72 rounded-full border bg-muted/50 pl-10 pr-4 text-sm outline-none transition-all focus:bg-background focus:ring-2 focus:ring-ring/20 focus:border-ring w-64 md:w-80"
-                    />
-                </form>
+                <DebouncedSearchInput 
+                    placeholder="Search tasks..." 
+                    onSearch={handleSearch}
+                    containerClassName="hidden md:block w-64 md:w-80"
+                />
 
                 <div className="flex items-center gap-2">
                     <button className="flex h-10 w-10 items-center justify-center rounded-full hover:bg-muted transition-all active:scale-95">

@@ -7,7 +7,7 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import Swal from "sweetalert2";
 
-export function TaskItemActions({ taskId, taskTitle }: { taskId: number, taskTitle: string }) {
+export function TaskItemActions({ taskId, taskTitle, isAdmin = false }: { taskId: number, taskTitle: string, isAdmin?: boolean }) {
     const [isOpen, setIsOpen] = useState(false);
     const [isActionLoading, setIsActionLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -95,17 +95,19 @@ export function TaskItemActions({ taskId, taskTitle }: { taskId: number, taskTit
                             </Button>
                         </div>
 
-                        <div className="border-t border-border/50 pt-4">
-                            <Button
-                                variant="outline"
-                                className="w-full justify-start gap-3 h-12 rounded-xl border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
-                                onClick={handleDelete}
-                                disabled={isActionLoading}
-                            >
-                                {isActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                Delete Task
-                            </Button>
-                        </div>
+                        {isAdmin && (
+                            <div className="border-t border-border/50 pt-4">
+                                <Button
+                                    variant="outline"
+                                    className="w-full justify-start gap-3 h-12 rounded-xl border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
+                                    onClick={handleDelete}
+                                    disabled={isActionLoading}
+                                >
+                                    {isActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                    Delete Task
+                                </Button>
+                            </div>
+                        )}
                     </div>
 
                     <Button

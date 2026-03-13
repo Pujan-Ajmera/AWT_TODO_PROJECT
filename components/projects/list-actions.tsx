@@ -6,10 +6,12 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import Swal from "sweetalert2";
 
-export function ListItemActions({ listId, listName }: { listId: number, listName: string }) {
+export function ListItemActions({ listId, listName, isAdmin = false }: { listId: number, listName: string, isAdmin?: boolean }) {
     const [isOpen, setIsOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    if (!isAdmin) return null;
 
     const handleDelete = async () => {
         const result = await Swal.fire({

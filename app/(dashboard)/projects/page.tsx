@@ -10,12 +10,14 @@ import {
     Users,
     Calendar,
     ArrowRight,
-    FolderOpen
+    FolderOpen,
+    ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { ProjectListClient } from "./project-list-client";
 import { ProjectActions } from "@/components/projects/project-actions";
+import { ProjectSearchClient } from "./project-search-client";
 
 export default async function ProjectsPage({
     searchParams,
@@ -31,17 +33,39 @@ export default async function ProjectsPage({
 
     const orderBy = sort === 'oldest' ? { CreatedAt: 'asc' } : { CreatedAt: 'desc' };
 
-    const [projects, totalCount] = await Promise.all([
-        prisma.projects.findMany({
-            where: q ? {
+    // Check if user is admin
+    const userRoles = await prisma.userroles.findMany({
+        where: { UserID: user.userId },
+        include: { roles: true }
+    });
+    const isAdmin = userRoles.some(ur => ur.roles?.RoleName === "Admin");
+
+    const where: any = {
+        AND: [
+            q ? {
                 OR: [
                     { ProjectName: { contains: q } },
                     { Description: { contains: q } },
                 ]
-            } : undefined,
+            } : {},
+            !isAdmin ? {
+                OR: [
+                    { CreatedBy: user.userId },
+                    { project_members: { some: { UserID: user.userId } } }
+                ]
+            } : {}
+        ]
+    };
+
+    const [projects, totalCount] = await Promise.all([
+        prisma.projects.findMany({
+            where,
             include: {
                 _count: {
-                    select: { tasklists: true }
+                    select: {
+                        tasklists: true,
+                        project_members: true
+                    }
                 },
                 users: {
                     select: { UserName: true }
@@ -51,14 +75,7 @@ export default async function ProjectsPage({
             take: pageSize,
             skip: (currentPage - 1) * pageSize,
         }),
-        prisma.projects.count({
-            where: q ? {
-                OR: [
-                    { ProjectName: { contains: q } },
-                    { Description: { contains: q } },
-                ]
-            } : undefined,
-        })
+        prisma.projects.count({ where })
     ]);
 
     const totalPages = Math.ceil(totalCount / pageSize);
@@ -72,23 +89,14 @@ export default async function ProjectsPage({
                     </h1>
                     <p className="text-muted-foreground text-lg">Manage and organize your team's workspace.</p>
                 </div>
-                <ProjectListClient />
+                {user && (await prisma.userroles.findMany({
+                    where: { UserID: user.userId },
+                    include: { roles: true }
+                })).some(ur => ur.roles?.RoleName === "Admin") && <ProjectListClient />}
             </header>
 
             <div className="flex flex-col md:flex-row gap-6 items-center justify-between bg-card/30 backdrop-blur-md p-6 rounded-3xl border border-border/50">
-                <div className="relative w-full md:w-96 group">
-                    <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <form action="/projects" method="GET">
-                        <input
-                            name="q"
-                            type="text"
-                            defaultValue={q}
-                            placeholder="Search projects..."
-                            className="w-full h-12 rounded-2xl border bg-background/50 pl-12 pr-4 text-sm outline-none transition-all focus:ring-4 focus:ring-primary/10 focus:border-primary"
-                        />
-                    </form>
-                </div>
-
+                <ProjectSearchClient />
             </div>
 
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
@@ -108,9 +116,11 @@ export default async function ProjectsPage({
                         </div>
 
                         <div className="flex-1 space-y-3">
-                            <h3 className="text-2xl font-bold tracking-tight transition-colors">
-                                {project.ProjectName}
-                            </h3>
+                            <Link href={`/projects/${project.ProjectID}`}>
+                                <h3 className="text-2xl font-bold tracking-tight transition-colors hover:text-primary cursor-pointer">
+                                    {project.ProjectName}
+                                </h3>
+                            </Link>
                             <p className="text-muted-foreground line-clamp-2 text-sm leading-relaxed">
                                 {project.Description || "No description provided for this project."}
                             </p>
@@ -119,23 +129,28 @@ export default async function ProjectsPage({
                         <div className="mt-8 pt-6 border-t border-border/50 flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="flex items-center -space-x-2">
-                                    {[1, 2, 3].map((n) => (
-                                        <div key={n} className="h-8 w-8 rounded-full border-2 border-card bg-muted flex items-center justify-center text-[10px] font-bold">
-                                            U
+                                    {Array.from({ length: Math.min(project._count.project_members, 3) }).map((_, i) => (
+                                        <div key={i} className="h-8 w-8 rounded-full border-2 border-card bg-muted flex items-center justify-center text-[10px] font-bold">
+                                            {project.users?.UserName?.[0] || "U"}
                                         </div>
                                     ))}
-                                    <div className="h-8 w-8 rounded-full border-2 border-card bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">
-                                        +5
-                                    </div>
+                                    {project._count.project_members > 3 && (
+                                        <div className="h-8 w-8 rounded-full border-2 border-card bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">
+                                            +{project._count.project_members - 3}
+                                        </div>
+                                    )}
                                 </div>
                                 <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                                     <Users className="h-3.5 w-3.5" />
-                                    8 members
+                                    {project._count.project_members} {project._count.project_members === 1 ? 'member' : 'members'}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-1.5 text-primary">
-                                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Open</span>
-                            </div>
+                            <Link href={`/projects/${project.ProjectID}`}>
+                                <div className="flex items-center gap-2 group/open text-primary cursor-pointer">
+                                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground group-hover/open:text-primary transition-colors">Open</span>
+                                    <ChevronRight className="h-4 w-4 transition-transform group-hover/open:translate-x-1" />
+                                </div>
+                            </Link>
                         </div>
                     </div>
                 ))}

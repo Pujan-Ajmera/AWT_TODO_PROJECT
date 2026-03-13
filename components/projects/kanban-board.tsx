@@ -13,7 +13,8 @@ import {
     CheckCircle2,
     Activity,
     Info,
-    Loader2
+    Loader2,
+    Users
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,7 @@ function InlineAddTask({ listId }: { listId: number }) {
                 },
                 body: JSON.stringify({
                     title,
-                    listId: listId.toString(),
+                    listId: listId,
                 }),
             });
 
@@ -124,9 +125,10 @@ interface KanbanBoardProps {
         tasklists: TaskList[];
     };
     onTaskClick?: (task: Task) => void;
+    isAdmin?: boolean;
 }
 
-export function KanbanBoard({ project, onTaskClick }: KanbanBoardProps) {
+export function KanbanBoard({ project, onTaskClick, isAdmin = false }: KanbanBoardProps) {
     const router = useRouter();
     const [isCreatingList, setIsCreatingList] = useState(false);
     const [newListName, setNewListName] = useState("");
@@ -223,10 +225,12 @@ export function KanbanBoard({ project, onTaskClick }: KanbanBoardProps) {
                             </span>
                         </div>
                         <div className="flex items-center gap-1">
-                            <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-all opacity-0 group-hover/list:opacity-100" title="Add task">
-                                <Plus className="h-4 w-4" />
-                            </button>
-                            <ListItemActions listId={list.ListID} listName={list.ListName} />
+                            {isAdmin && (
+                                <button className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-all opacity-0 group-hover/list:opacity-100" title="Add task">
+                                    <Plus className="h-4 w-4" />
+                                </button>
+                            )}
+                            <ListItemActions listId={list.ListID} listName={list.ListName} isAdmin={isAdmin} />
                         </div>
                     </div>
 
@@ -267,8 +271,8 @@ export function KanbanBoard({ project, onTaskClick }: KanbanBoardProps) {
 
                                     <div className="flex items-center justify-between pt-2">
                                         <div className="flex items-center gap-3">
-                                            <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center text-[10px] font-black border border-background shadow-sm overflow-hidden">
-                                                {task.users?.UserName?.[0] || "?"}
+                                            <div className="h-7 w-7 rounded-full bg-secondary flex items-center justify-center text-[10px] font-black border border-background shadow-sm overflow-hidden text-muted-foreground" title="Assigned to Project Members">
+                                                <Users className="h-3.5 w-3.5" />
                                             </div>
                                             <div className="flex items-center gap-2 text-muted-foreground">
                                                 <div className="flex items-center gap-1 text-[10px] font-bold">
@@ -296,48 +300,50 @@ export function KanbanBoard({ project, onTaskClick }: KanbanBoardProps) {
                             </div>
                         ))}
 
-                        <InlineAddTask listId={list.ListID} />
+                        {isAdmin && <InlineAddTask listId={list.ListID} />}
                     </div>
                 </div>
             ))}
 
-            {isCreatingList ? (
-                <div className="flex-shrink-0 w-[350px] p-6 rounded-[2rem] border bg-card/50 backdrop-blur-sm card-shadow animate-in slide-in-from-right-4 duration-300">
-                    <form onSubmit={handleCreateList} className="space-y-4">
-                        <div className="space-y-2">
-                            <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">List Title</label>
-                            <input
-                                autoFocus
-                                type="text"
-                                placeholder="e.g. In Progress"
-                                className="w-full h-11 rounded-xl border bg-background px-4 text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all"
-                                value={newListName}
-                                onChange={(e) => setNewListName(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex gap-2 pt-2">
-                            <Button type="submit" className="flex-1 rounded-xl font-bold shadow-lg shadow-primary/20">Add List</Button>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                className="rounded-xl font-bold"
-                                onClick={() => setIsCreatingList(false)}
-                            >
-                                Cancel
-                            </Button>
-                        </div>
-                    </form>
-                </div>
-            ) : (
-                <button
-                    onClick={() => setIsCreatingList(true)}
-                    className="flex-shrink-0 w-[350px] h-[72px] flex items-center justify-center gap-3 rounded-[2rem] border-2 border-dashed border-muted text-sm font-black text-muted-foreground hover:bg-muted/30 hover:border-primary/20 hover:text-primary transition-all group/newList"
-                >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/50 group-hover/newList:bg-primary/10 transition-colors">
-                        <Plus className="h-5 w-5 group-hover/newList:scale-110 transition-transform" />
+            {isAdmin && (
+                isCreatingList ? (
+                    <div className="flex-shrink-0 w-[350px] p-6 rounded-[2rem] border bg-card/50 backdrop-blur-sm card-shadow animate-in slide-in-from-right-4 duration-300">
+                        <form onSubmit={handleCreateList} className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">List Title</label>
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    placeholder="e.g. In Progress"
+                                    className="w-full h-11 rounded-xl border bg-background px-4 text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all"
+                                    value={newListName}
+                                    onChange={(e) => setNewListName(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                                <Button type="submit" className="flex-1 rounded-xl font-bold shadow-lg shadow-primary/20">Add List</Button>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    className="rounded-xl font-bold"
+                                    onClick={() => setIsCreatingList(false)}
+                                >
+                                    Cancel
+                                </Button>
+                            </div>
+                        </form>
                     </div>
-                    Create new list
-                </button>
+                ) : (
+                    <button
+                        onClick={() => setIsCreatingList(true)}
+                        className="flex-shrink-0 w-[350px] h-[72px] flex items-center justify-center gap-3 rounded-[2rem] border-2 border-dashed border-muted text-sm font-black text-muted-foreground hover:bg-muted/30 hover:border-primary/20 hover:text-primary transition-all group/newList"
+                    >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/50 group-hover/newList:bg-primary/10 transition-colors">
+                            <Plus className="h-5 w-5 group-hover/newList:scale-110 transition-transform" />
+                        </div>
+                        Create new list
+                    </button>
+                )
             )}
 
         </div>

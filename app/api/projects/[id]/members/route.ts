@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { handleApiError, ApiError } from "@/lib/api-utils";
 
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const user = await getCurrentUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        if (!user) throw new ApiError("Unauthorized", 401);
 
-        const projectId = parseInt(params.id);
+        const { id } = await params;
+        const projectId = parseInt(id);
+        if (isNaN(projectId)) throw new ApiError("Invalid Project ID", 400);
 
         const members = await prisma.project_members.findMany({
             where: { ProjectID: projectId },
@@ -29,48 +30,48 @@ export async function GET(
 
         return NextResponse.json(members);
     } catch (error) {
-        console.error("GET members error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return handleApiError(error);
     }
 }
 
 export async function POST(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const user = await getCurrentUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        if (!user) throw new ApiError("Unauthorized", 401);
 
-        const projectId = parseInt(params.id);
+        // Authorization check: Only admins can manage members
+        const userRoles = await prisma.userroles.findMany({
+            where: { UserID: user.userId },
+            include: { roles: true }
+        });
+        const isAdmin = userRoles.some(ur => ur.roles?.RoleName === "Admin");
+        if (!isAdmin) throw new ApiError("Forbidden: Only admins can manage members", 403);
+
+        const { id } = await params;
+        const projectId = parseInt(id);
+        if (isNaN(projectId)) throw new ApiError("Invalid Project ID", 400);
+
         const { email } = await request.json();
 
-        if (!email) {
-            return NextResponse.json({ error: "Email is required" }, { status: 400 });
-        }
+        if (!email) throw new ApiError("Email is required", 400);
 
         const userToInvite = await prisma.users.findUnique({
             where: { Email: email }
         });
 
-        if (!userToInvite) {
-            return NextResponse.json({ error: "User not found" }, { status: 404 });
-        }
+        if (!userToInvite) throw new ApiError("User not found", 404);
 
-        const existingMember = await prisma.project_members.findUnique({
+        const existingMember = await prisma.project_members.findFirst({
             where: {
-                ProjectID_UserID: {
-                    ProjectID: projectId,
-                    UserID: userToInvite.UserID
-                }
+                ProjectID: projectId,
+                UserID: userToInvite.UserID
             }
         });
 
-        if (existingMember) {
-            return NextResponse.json({ error: "User is already a member" }, { status: 400 });
-        }
+        if (existingMember) throw new ApiError("User is already a member", 400);
 
         const newMember = await prisma.project_members.create({
             data: {
@@ -90,41 +91,51 @@ export async function POST(
 
         return NextResponse.json(newMember, { status: 201 });
     } catch (error) {
-        console.error("POST member error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return handleApiError(error);
     }
 }
 
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const user = await getCurrentUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        if (!user) throw new ApiError("Unauthorized", 401);
 
-        const projectId = parseInt(params.id);
+        // Authorization check
+        const userRoles = await prisma.userroles.findMany({
+            where: { UserID: user.userId },
+            include: { roles: true }
+        });
+        const isAdmin = userRoles.some(ur => ur.roles?.RoleName === "Admin");
+        if (!isAdmin) throw new ApiError("Forbidden: Only admins can manage members", 403);
+
+        const { id } = await params;
+        const projectId = parseInt(id);
         const { searchParams } = new URL(request.url);
-        const userId = searchParams.get("userId");
+        const userIdStr = searchParams.get("userId");
 
-        if (!userId) {
-            return NextResponse.json({ error: "User ID is required" }, { status: 400 });
-        }
+        if (!userIdStr) throw new ApiError("User ID is required", 400);
+        const userId = parseInt(userIdStr);
+
+        // Generic delete using findFirst to identify and then delete by MemberID
+        // since compound keys can have generator-specific names
+        const member = await prisma.project_members.findFirst({
+            where: {
+                ProjectID: projectId,
+                UserID: userId
+            }
+        });
+
+        if (!member) throw new ApiError("Member not found", 404);
 
         await prisma.project_members.delete({
-            where: {
-                ProjectID_UserID: {
-                    ProjectID: projectId,
-                    UserID: parseInt(userId)
-                }
-            }
+            where: { MemberID: member.MemberID }
         });
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("DELETE member error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return handleApiError(error);
     }
 }

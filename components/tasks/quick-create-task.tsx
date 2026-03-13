@@ -1,16 +1,44 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Send, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Send, Loader2, Layout } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createTaskAction } from "@/app/actions/tasks";
 import { cn } from "@/lib/utils";
+
+interface Project {
+    ProjectID: number;
+    ProjectName: string;
+    tasklists: {
+        ListID: number;
+        ListName: string;
+    }[];
+}
 
 export function QuickCreateTask() {
     const [isExpanded, setIsExpanded] = useState(false);
     const [title, setTitle] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+
+    useEffect(() => {
+        const fetchProjects = async () => {
+            try {
+                const response = await fetch("/api/projects");
+                if (response.ok) {
+                    const data = await response.json();
+                    setProjects(data);
+                }
+            } catch (err) {
+                console.error("Failed to fetch projects:", err);
+            }
+        };
+
+        if (isExpanded) {
+            fetchProjects();
+        }
+    }, [isExpanded]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -18,7 +46,7 @@ export function QuickCreateTask() {
 
         setIsLoading(true);
         setError(null);
-        console.log("Submitting task via API:", title);
+        console.log("Submitting task via API:", title, "Project ID:", selectedProjectId);
 
         try {
             const response = await fetch("/api/tasks", {
@@ -28,6 +56,7 @@ export function QuickCreateTask() {
                 },
                 body: JSON.stringify({
                     title,
+                    projectId: selectedProjectId ? parseInt(selectedProjectId) : undefined,
                 }),
             });
 
@@ -35,6 +64,7 @@ export function QuickCreateTask() {
                 const data = await response.json();
                 console.log("Task created successfully:", data);
                 setTitle("");
+                setSelectedProjectId("");
                 setIsExpanded(false);
                 // Refresh the page or trigger a data re-fetch
                 window.location.reload();
@@ -86,29 +116,53 @@ export function QuickCreateTask() {
                             disabled={isLoading}
                         />
                     </div>
-                    <div className="flex items-center justify-end gap-2">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                                setIsExpanded(false);
-                                setTitle("");
-                            }}
-                            disabled={isLoading}
-                            className="rounded-full"
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="submit"
-                            size="sm"
-                            disabled={!title.trim() || isLoading}
-                            className="rounded-full gap-2 px-4 shadow-lg shadow-primary/20"
-                        >
-                            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                            Create Task
-                        </Button>
+
+                    <div className="flex items-center gap-4 px-1">
+                        <div className="flex items-center gap-2 flex-1">
+                            <Layout className="h-4 w-4 text-muted-foreground" />
+                            <select
+                                className="flex-1 bg-transparent text-xs font-bold outline-none border-none focus:ring-0 cursor-pointer"
+                                value={selectedProjectId}
+                                onChange={(e) => setSelectedProjectId(e.target.value)}
+                                disabled={isLoading}
+                            >
+                                <option value="" disabled>Select a Project</option>
+                                {projects.map((project) => (
+                                    <option key={project.ProjectID} value={project.ProjectID}>
+                                        {project.ProjectName}
+                                    </option>
+                                ))}
+                                {projects.length === 0 && (
+                                    <option disabled>No projects available</option>
+                                )}
+                            </select>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                    setIsExpanded(false);
+                                    setTitle("");
+                                    setSelectedProjectId("");
+                                }}
+                                disabled={isLoading}
+                                className="rounded-full"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                size="sm"
+                                disabled={!title.trim() || !selectedProjectId || isLoading}
+                                className="rounded-full gap-2 px-4 shadow-lg shadow-primary/20"
+                            >
+                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                Create Task
+                            </Button>
+                        </div>
                     </div>
                 </form>
             )}

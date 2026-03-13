@@ -26,27 +26,41 @@ interface DashboardViewProps {
         email: string;
     };
     q?: string;
+    isAdmin?: boolean;
 }
 
-export async function DashboardView({ user, q }: DashboardViewProps) {
-    // Fetch stats for the logged-in user
+export async function DashboardView({ user, q, isAdmin }: DashboardViewProps) {
+    // Use project membership for task visibility
+    const baseWhere: any = isAdmin ? {} : {
+        tasklists: {
+            projects: {
+                project_members: {
+                    some: {
+                        UserID: user.userId
+                    }
+                }
+            }
+        }
+    };
+
+    // Fetch stats based on visibility
     const [totalTasks, completedTasks, inProgressTasks, overdueTasks] = await Promise.all([
-        prisma.tasks.count({ where: { AssignedTo: user.userId } }),
-        prisma.tasks.count({ where: { AssignedTo: user.userId, Status: "Completed" } }),
-        prisma.tasks.count({ where: { AssignedTo: user.userId, Status: "In Progress" } }),
+        prisma.tasks.count({ where: baseWhere }),
+        prisma.tasks.count({ where: { ...baseWhere, Status: "Completed" } }),
+        prisma.tasks.count({ where: { ...baseWhere, Status: "In Progress" } }),
         prisma.tasks.count({
             where: {
-                AssignedTo: user.userId,
+                ...baseWhere,
                 Status: { not: "Completed" },
                 DueDate: { lt: new Date() }
             }
         })
     ]);
 
-    // Fetch active tasks for the logged-in user
+    // Fetch active tasks based on visibility
     const activeTasks = await prisma.tasks.findMany({
         where: {
-            AssignedTo: user.userId,
+            ...baseWhere,
             Status: { not: "Completed" },
             OR: q ? [
                 { Title: { contains: q } },
@@ -96,7 +110,7 @@ export async function DashboardView({ user, q }: DashboardViewProps) {
                     >
                         View All Tasks
                     </Link>
-                    <CaptureNewButton />
+                    {isAdmin && <CaptureNewButton />}
                 </div>
             </header>
 
@@ -132,7 +146,7 @@ export async function DashboardView({ user, q }: DashboardViewProps) {
                         <div className="flex items-center justify-between">
                             <h2 className="text-2xl font-bold tracking-tight">Focus Zone</h2>
                         </div>
-                        <QuickCreateTask />
+                        {isAdmin && <QuickCreateTask />}
                     </div>
 
                     <div className="rounded-3xl border bg-card/50 backdrop-blur-sm p-8 card-shadow">
@@ -158,7 +172,7 @@ export async function DashboardView({ user, q }: DashboardViewProps) {
                                             <h4 className="font-bold text-lg group-hover:text-primary transition-colors">{task.Title}</h4>
                                             <div className="flex items-center gap-3 mt-1">
                                                 <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                                                    {task.tasklists?.ListName || "General"}
+                                                    {task.tasklists?.ListName || "No Project"}
                                                 </span>
                                                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Calendar className="h-3 w-3" />
@@ -168,7 +182,7 @@ export async function DashboardView({ user, q }: DashboardViewProps) {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <TaskItemActions taskId={task.TaskID} taskTitle={task.Title} />
+                                        <TaskItemActions taskId={task.TaskID} taskTitle={task.Title} isAdmin={isAdmin} />
                                     </div>
                                 </div>
                             ))}
@@ -220,6 +234,6 @@ export async function DashboardView({ user, q }: DashboardViewProps) {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

@@ -1,16 +1,45 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Loader2, Layout } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { createTaskAction } from "@/app/actions/tasks";
+
+interface Project {
+    ProjectID: number;
+    ProjectName: string;
+    tasklists: {
+        ListID: number;
+        ListName: string;
+    }[];
+}
 
 export function CaptureNewButton() {
     const [isOpen, setIsOpen] = useState(false);
     const [title, setTitle] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+
+    useEffect(() => {
+        const fetchProjects = async () => {
+            try {
+                const response = await fetch("/api/projects");
+                if (response.ok) {
+                    const data = await response.json();
+                    setProjects(data);
+                }
+            } catch (err) {
+                console.error("Failed to fetch projects:", err);
+            }
+        };
+
+        if (isOpen) {
+            fetchProjects();
+        }
+    }, [isOpen]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -21,10 +50,17 @@ export function CaptureNewButton() {
         try {
             const formData = new FormData();
             formData.append("title", title);
+            if (selectedProjectId) {
+                formData.append("projectId", selectedProjectId);
+            }
+
             const result = await createTaskAction(formData);
             if (result.success) {
                 setTitle("");
+                setSelectedProjectId("");
                 setIsOpen(false);
+                // Since this might be on a page where state needs refresh
+                window.location.reload();
             } else {
                 setError(result.error || "Failed to create task");
             }
@@ -47,28 +83,54 @@ export function CaptureNewButton() {
             </button>
 
             <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Quick Capture">
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-6">
                     {error && (
                         <div className="p-3 text-xs font-bold text-red-600 bg-red-50 border border-red-100 rounded-xl">
                             {error}
                         </div>
                     )}
-                    <div className="space-y-2">
-                        <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Task Title</label>
-                        <input
-                            autoFocus
-                            placeholder="What's on your mind?"
-                            className="w-full h-12 rounded-2xl border bg-muted/30 px-4 text-sm font-bold outline-none focus:bg-background focus:ring-4 focus:ring-primary/10 transition-all"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            disabled={isLoading}
-                        />
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Task Title</label>
+                            <input
+                                autoFocus
+                                placeholder="What's on your mind?"
+                                className="w-full h-12 rounded-2xl border bg-muted/30 px-4 text-sm font-bold outline-none focus:bg-background focus:ring-4 focus:ring-primary/10 transition-all"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                disabled={isLoading}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Assign to Project</label>
+                            <div className="relative group">
+                                <Layout className="absolute left-3 top-3 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                <select
+                                    className="w-full h-11 rounded-xl border bg-muted/30 pl-11 pr-4 text-sm font-bold outline-none focus:bg-background focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
+                                    value={selectedProjectId}
+                                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                                    disabled={isLoading}
+                                >
+                                    <option value="" disabled>Select a Project</option>
+                                    {projects.map((project) => (
+                                        <option key={project.ProjectID} value={project.ProjectID}>
+                                            {project.ProjectName}
+                                        </option>
+                                    ))}
+                                    {projects.length === 0 && (
+                                        <option disabled>No projects available</option>
+                                    )}
+                                </select>
+                            </div>
+                        </div>
                     </div>
+
                     <div className="flex justify-end gap-3 pt-2">
                         <Button type="button" variant="ghost" onClick={() => setIsOpen(false)} disabled={isLoading} className="rounded-xl">
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={!title.trim() || isLoading} className="rounded-xl px-8 shadow-lg shadow-primary/20">
+                        <Button type="submit" disabled={!title.trim() || !selectedProjectId || isLoading} className="rounded-xl px-8 shadow-lg shadow-primary/20">
                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                             Create Task
                         </Button>
