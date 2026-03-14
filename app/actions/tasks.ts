@@ -26,8 +26,12 @@ export async function createTaskAction(formData: FormData) {
     let listId = listIdStr ? parseInt(listIdStr) : null;
     const projectId = projectIdStr ? parseInt(projectIdStr) : null;
 
-    if (!listId && !projectId) {
+    if (!projectId) {
         return { error: "Project selection is mandatory" };
+    }
+
+    if (!dueDate) {
+        return { error: "Due date is mandatory" };
     }
 
     try {

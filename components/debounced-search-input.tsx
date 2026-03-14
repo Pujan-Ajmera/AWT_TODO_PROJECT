@@ -19,12 +19,12 @@ export function DebouncedSearchInput({
     onSearch,
     className,
     containerClassName,
-    delay = 300,
+    delay = 250,
 }: DebouncedSearchInputProps) {
     const [value, setValue] = useState(defaultValue);
 
     useEffect(() => {
-        // Only trigger search if value is different from defaultValue (URL state)
+        // Only trigger search if value is different from current defaultValue (URL state)
         if (value === defaultValue) return;
 
         const timer = setTimeout(() => {
@@ -32,11 +32,13 @@ export function DebouncedSearchInput({
         }, delay);
 
         return () => clearTimeout(timer);
-    }, [value, delay, onSearch, defaultValue]);
+    }, [value, delay, onSearch]);
 
-    // Update internal state if defaultValue changes (e.g. on navigation or URL update)
+    // Update internal state if defaultValue changes externally
     useEffect(() => {
-        setValue(defaultValue);
+        if (defaultValue !== value) {
+            setValue(defaultValue);
+        }
     }, [defaultValue]);
 
     return (

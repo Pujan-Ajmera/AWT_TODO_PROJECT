@@ -21,9 +21,22 @@ export async function createProjectAction(formData: FormData) {
 
     const name = formData.get("name") as string;
     const description = formData.get("description") as string;
+    const completionDateStr = formData.get("completionDate") as string;
 
     if (!name) {
         return { error: "Project name is required" };
+    }
+
+    if (!completionDateStr) {
+        return { error: "Project completion date is mandatory" };
+    }
+
+    const completionDate = new Date(completionDateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (completionDate < today) {
+        return { error: "Project completion date must be in the future" };
     }
 
     try {
@@ -32,6 +45,7 @@ export async function createProjectAction(formData: FormData) {
                 data: {
                     ProjectName: name,
                     Description: description,
+                    CompletionDate: completionDate,
                     CreatedBy: user.userId,
                 }
             });

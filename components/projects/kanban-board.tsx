@@ -8,7 +8,6 @@ import {
     GripVertical,
     Clock,
     MessageSquare,
-    Paperclip,
     Calendar,
     CheckCircle2,
     Activity,
@@ -27,6 +26,8 @@ function InlineAddTask({ listId }: { listId: number }) {
     const router = useRouter();
     const [isAdding, setIsAdding] = useState(false);
     const [title, setTitle] = useState("");
+    const [dueDate, setDueDate] = useState("");
+    const [description, setDescription] = useState("");
     const [isLoading, setIsLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -43,11 +44,15 @@ function InlineAddTask({ listId }: { listId: number }) {
                 body: JSON.stringify({
                     title,
                     listId: listId,
+                    dueDate: dueDate || undefined,
+                    description: description || undefined,
                 }),
             });
 
             if (response.ok) {
                 setTitle("");
+                setDueDate("");
+                setDescription("");
                 setIsAdding(false);
                 // Trigger a refresh since we're using SSR/server components mostly but components are client
                 router.refresh();
@@ -74,16 +79,39 @@ function InlineAddTask({ listId }: { listId: number }) {
     return (
         <div className="bg-card rounded-2xl border p-4 shadow-sm animate-in fade-in zoom-in-95 duration-200">
             <form onSubmit={handleSubmit} className="space-y-3">
-                <input
-                    autoFocus
-                    placeholder="Task title..."
-                    className="w-full bg-transparent text-sm font-bold outline-none"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    disabled={isLoading}
-                />
+                <div className="flex items-center gap-2">
+                    <input
+                        autoFocus
+                        placeholder="Task title..."
+                        className="flex-1 bg-transparent text-sm font-bold outline-none"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        disabled={isLoading}
+                    />
+                    <div className="flex items-center gap-2 flex-1 border rounded-lg bg-muted/30 px-3 py-1.5 focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                        <input
+                            type="date"
+                            className="w-full bg-transparent text-xs font-bold outline-none cursor-pointer"
+                            value={dueDate}
+                            onChange={(e) => setDueDate(e.target.value)}
+                            disabled={isLoading}
+                            required
+                            min={new Date().toISOString().split('T')[0]}
+                        />
+                    </div>
+                </div>
+                <div className="space-y-1">
+                    <textarea
+                        placeholder="Add description..."
+                        className="w-full bg-transparent text-xs font-medium outline-none p-2 rounded-lg border bg-muted/10 focus:ring-2 focus:ring-primary/10 transition-all resize-none h-16"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        disabled={isLoading}
+                    />
+                </div>
                 <div className="flex gap-2">
-                    <Button type="submit" size="sm" className="h-8 rounded-lg text-xs" disabled={!title.trim() || isLoading}>
+                    <Button type="submit" size="sm" className="h-8 rounded-lg text-xs" disabled={!title.trim() || !dueDate || isLoading}>
                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
                     </Button>
                     <Button
@@ -110,6 +138,9 @@ interface Task {
     Status: string | null;
     DueDate: string | Date | null;
     users: { UserName: string } | null;
+    _count?: {
+        taskcomments: number;
+    }
 }
 
 interface TaskList {
@@ -236,14 +267,18 @@ export function KanbanBoard({ project, onTaskClick, isAdmin = false }: KanbanBoa
 
                     <div className="flex-1 space-y-4 overflow-y-auto pr-2 pb-4 scrollbar-thin scrollbar-thumb-muted-foreground/10 hover:scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent min-h-[100px]">
                         {list.tasks.map((task) => (
-                            <div
-                                key={task.TaskID}
-                                draggable="true"
-                                onDragStart={(e) => handleDragStart(e, task.TaskID)}
-                                onDragEnd={handleDragEnd}
-                                onClick={() => handleTaskClick(task)}
-                                className="group/card relative rounded-2xl border bg-card/80 p-5 shadow-sm transition-all duration-300 hover:shadow-xl hover:bg-card hover:-translate-y-1 hover:border-primary/20 cursor-grab active:cursor-grabbing card-shadow"
-                            >
+                                <div
+                                    key={task.TaskID}
+                                    draggable={isAdmin}
+                                    onDragStart={(e) => isAdmin && handleDragStart(e, task.TaskID)}
+                                    onDragEnd={isAdmin ? handleDragEnd : undefined}
+                                    onClick={() => handleTaskClick(task)}
+                                    className={cn(
+                                        "group/card relative rounded-2xl border bg-card/80 p-5 shadow-sm transition-all duration-300 hover:shadow-xl hover:bg-card hover:-translate-y-1 hover:border-primary/20",
+                                        isAdmin ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+                                        "card-shadow"
+                                    )}
+                                >
                                 {/* Priority Indicator */}
                                 <div className={cn(
                                     "absolute top-5 right-5 h-2 w-2 rounded-full",
@@ -277,11 +312,7 @@ export function KanbanBoard({ project, onTaskClick, isAdmin = false }: KanbanBoa
                                             <div className="flex items-center gap-2 text-muted-foreground">
                                                 <div className="flex items-center gap-1 text-[10px] font-bold">
                                                     <MessageSquare className="h-3 w-3" />
-                                                    2
-                                                </div>
-                                                <div className="flex items-center gap-1 text-[10px] font-bold">
-                                                    <Paperclip className="h-3 w-3" />
-                                                    1
+                                                    {task._count?.taskcomments || 0}
                                                 </div>
                                             </div>
                                         </div>
@@ -290,9 +321,9 @@ export function KanbanBoard({ project, onTaskClick, isAdmin = false }: KanbanBoa
                                             <div className={cn(
                                                 "flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg",
                                                 new Date(task.DueDate) < new Date() ? "bg-red-50 text-red-600" : "bg-muted text-muted-foreground"
-                                            )}>
+                                            )} suppressHydrationWarning>
                                                 <Clock className="h-3 w-3" />
-                                                {new Date(task.DueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                {new Date(task.DueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                             </div>
                                         )}
                                     </div>

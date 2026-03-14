@@ -124,8 +124,8 @@ export function ProjectViewContainer({ project, view, q, isAdmin = false }: Proj
                                             </div>
                                         </td>
                                         <td className="px-8 py-5">
-                                            <span className="text-sm font-medium text-muted-foreground">
-                                                {task.DueDate ? new Date(task.DueDate).toLocaleDateString() : "No date"}
+                                            <span className="text-sm font-medium text-muted-foreground" suppressHydrationWarning>
+                                                {task.DueDate ? new Date(task.DueDate).toLocaleDateString('en-US') : "No date"}
                                             </span>
                                         </td>
                                     </tr>
@@ -139,18 +139,6 @@ export function ProjectViewContainer({ project, view, q, isAdmin = false }: Proj
                                 )}
                             </tbody>
                         </table>
-                    </div>
-                ) : view === "files" ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        <div className="col-span-full bg-card p-12 rounded-[2.5rem] border border-dashed flex flex-col items-center justify-center text-center space-y-4">
-                            <div className="h-16 w-16 rounded-3xl bg-primary/5 flex items-center justify-center text-primary/40">
-                                <Plus className="h-8 w-8" />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-bold">Project Files</h3>
-                                <p className="text-muted-foreground max-w-sm">Files are managed within individual tasks. Open a task to view and upload attachments.</p>
-                            </div>
-                        </div>
                     </div>
                 ) : (view === "details" || !view) ? (
                     <div className="grid gap-8 lg:grid-cols-3">
@@ -229,8 +217,8 @@ export function ProjectViewContainer({ project, view, q, isAdmin = false }: Proj
                                         <div className="absolute left-2.5 top-1.5 h-3.5 w-3.5 rounded-full bg-background border-2 border-primary ring-4 ring-primary/10 z-10" />
                                         <div className="p-4 rounded-2xl border bg-muted/20 group-hover:bg-muted/40 transition-all border-border/30">
                                             <div className="flex items-center justify-between mb-1">
-                                                <span className="text-xs font-black text-primary uppercase tracking-widest">
-                                                    {task.DueDate ? new Date(task.DueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : "No Date"}
+                                                <span className="text-xs font-black text-primary uppercase tracking-widest" suppressHydrationWarning>
+                                                    {task.DueDate ? new Date(task.DueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : "No Date"}
                                                 </span>
                                                 <span className={cn(
                                                     "text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg",

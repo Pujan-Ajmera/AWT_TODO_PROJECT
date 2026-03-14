@@ -47,7 +47,6 @@ export default async function ProjectDetailPage({
                     tasks: {
                         where: {
                             AND: [
-                                !isAdmin ? { AssignedTo: user.userId } : {},
                                 q ? {
                                     OR: [
                                         { Title: { contains: q } },
@@ -151,15 +150,6 @@ export default async function ProjectDetailPage({
                         )}
                     >
                         Task List
-                    </Link>
-                    <Link
-                        href={`/projects/${id}?view=files${q ? `&q=${q}` : ""}`}
-                        className={cn(
-                            "text-sm pb-4 -mb-[18px] px-2 transition-all font-bold",
-                            view === "files" ? "border-b-2 border-primary text-foreground" : "text-muted-foreground hover:text-foreground"
-                        )}
-                    >
-                        Files
                     </Link>
                     <Link
                         href={`/projects/${id}?view=timeline${q ? `&q=${q}` : ""}`}

@@ -14,8 +14,38 @@ export async function DELETE(
         const { id } = await params;
         const listId = parseInt(id);
 
-        await prisma.tasklists.delete({
-            where: { ListID: listId }
+        // Check if user is admin
+        const userRoles = await prisma.userroles.findMany({
+            where: { UserID: user.userId },
+            include: { roles: true }
+        });
+        const isAdmin = userRoles.some(ur => ur.roles?.RoleName === "Admin");
+
+        if (!isAdmin) {
+            throw new ApiError("Forbidden: Only admins can perform this action", 403);
+        }
+
+        await prisma.$transaction(async (tx) => {
+            // Find all tasks in this list
+            const tasks = await tx.tasks.findMany({
+                where: { ListID: listId },
+                select: { TaskID: true }
+            });
+            const taskIds = tasks.map(t => t.TaskID);
+
+            if (taskIds.length > 0) {
+                // Delete dependencies for all tasks in the list
+                await tx.taskcomments.deleteMany({ where: { TaskID: { in: taskIds } } });
+                await tx.taskhistory.deleteMany({ where: { TaskID: { in: taskIds } } });
+                await tx.taskattachments.deleteMany({ where: { TaskID: { in: taskIds } } });
+                // Delete the tasks themselves
+                await tx.tasks.deleteMany({ where: { ListID: listId } });
+            }
+
+            // Finally delete the list
+            await tx.tasklists.delete({
+                where: { ListID: listId }
+            });
         });
 
         return NextResponse.json({ success: true });
@@ -35,6 +65,18 @@ export async function PATCH(
 
         const { id } = await params;
         const listId = parseInt(id);
+
+        // Check if user is admin
+        const userRoles = await prisma.userroles.findMany({
+            where: { UserID: user.userId },
+            include: { roles: true }
+        });
+        const isAdmin = userRoles.some(ur => ur.roles?.RoleName === "Admin");
+
+        if (!isAdmin) {
+            throw new ApiError("Forbidden: Only admins can update task lists", 403);
+        }
+
         const body = await request.json();
         const { name } = body;
 

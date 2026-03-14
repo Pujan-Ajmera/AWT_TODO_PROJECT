@@ -8,7 +8,6 @@ import {
     User,
     MoreHorizontal,
     Plus,
-    Paperclip,
     CheckCircle2,
     AlertCircle,
     Activity,
@@ -18,7 +17,6 @@ import {
     MessageSquare,
     Tag,
     Calendar,
-    Calendar as CalendarIcon,
     History
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,30 +35,23 @@ export function TaskDetailSidebar({ task, isOpen, onClose, isAdmin = false }: Ta
     const router = useRouter();
     const [comment, setComment] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [attachments, setAttachments] = useState<any[]>([]);
-    const [isUploading, setIsUploading] = useState(false);
     const [comments, setComments] = useState<any[]>([]);
     const [history, setHistory] = useState<any[]>([]);
+    const [description, setDescription] = useState("");
+    const [isEditingDescription, setIsEditingDescription] = useState(false);
+    const [title, setTitle] = useState("");
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
 
     useEffect(() => {
         if (task && isOpen) {
-            fetchAttachments();
             fetchComments();
             fetchHistory();
+            setDescription(task.Description || "");
+            setTitle(task.Title || "");
+            setIsEditingDescription(false);
+            setIsEditingTitle(false);
         }
     }, [task, isOpen]);
-
-    const fetchAttachments = async () => {
-        try {
-            const response = await fetch(`/api/tasks/${task.TaskID}/attachments`);
-            if (response.ok) {
-                const data = await response.json();
-                setAttachments(data);
-            }
-        } catch (error) {
-            console.error("Fetch attachments error:", error);
-        }
-    };
 
     const fetchComments = async () => {
         try {
@@ -114,31 +105,6 @@ export function TaskDetailSidebar({ task, isOpen, onClose, isAdmin = false }: Ta
         }
     };
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        setIsUploading(true);
-        const formData = new FormData();
-        formData.append("file", file);
-
-        try {
-            const response = await fetch(`/api/tasks/${task.TaskID}/attachments`, {
-                method: "POST",
-                body: formData,
-            });
-
-            if (response.ok) {
-                fetchAttachments();
-                router.refresh();
-            }
-        } catch (error) {
-            console.error("Upload error:", error);
-        } finally {
-            setIsUploading(false);
-        }
-    };
-
     const handleStatusUpdate = async (status: string) => {
         try {
             const response = await fetch(`/api/tasks/${task.TaskID}`, {
@@ -151,9 +117,144 @@ export function TaskDetailSidebar({ task, isOpen, onClose, isAdmin = false }: Ta
 
             if (response.ok) {
                 router.refresh();
+                fetchHistory();
+            } else {
+                const data = await response.json();
+                Swal.fire({
+                    title: "Error",
+                    text: data.error || "Failed to update status",
+                    icon: "error",
+                    customClass: {
+                        popup: "rounded-[2rem] border-none shadow-2xl",
+                        confirmButton: "rounded-xl font-bold px-6"
+                    }
+                });
             }
         } catch (error) {
             console.error("Status update error:", error);
+        }
+    };
+
+    const handlePriorityUpdate = async (priority: string) => {
+        try {
+            const response = await fetch(`/api/tasks/${task.TaskID}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ priority }),
+            });
+
+            if (response.ok) {
+                router.refresh();
+                fetchHistory();
+            } else {
+                const data = await response.json();
+                Swal.fire({
+                    title: "Error",
+                    text: data.error || "Failed to update priority",
+                    icon: "error",
+                    customClass: {
+                        popup: "rounded-[2rem] border-none shadow-2xl",
+                        confirmButton: "rounded-xl font-bold px-6"
+                    }
+                });
+            }
+        } catch (error) {
+            console.error("Priority update error:", error);
+        }
+    };
+
+    const handleDueDateUpdate = async (dueDate: string) => {
+        try {
+            const response = await fetch(`/api/tasks/${task.TaskID}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ dueDate }),
+            });
+
+            if (response.ok) {
+                router.refresh();
+                fetchHistory();
+            } else {
+                const data = await response.json();
+                Swal.fire({
+                    title: "Validation Error",
+                    text: data.error || "Failed to update due date",
+                    icon: "error",
+                    customClass: {
+                        popup: "rounded-[2rem] border-none shadow-2xl",
+                        confirmButton: "rounded-xl font-bold px-6"
+                    }
+                });
+            }
+        } catch (error) {
+            console.error("Due date update error:", error);
+        }
+    };
+
+    const handleDescriptionUpdate = async () => {
+        try {
+            const response = await fetch(`/api/tasks/${task.TaskID}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ description }),
+            });
+
+            if (response.ok) {
+                setIsEditingDescription(false);
+                router.refresh();
+                fetchHistory();
+            } else {
+                const data = await response.json();
+                Swal.fire({
+                    title: "Error",
+                    text: data.error || "Failed to update description",
+                    icon: "error",
+                    customClass: {
+                        popup: "rounded-[2rem] border-none shadow-2xl",
+                        confirmButton: "rounded-xl font-bold px-6"
+                    }
+                });
+            }
+        } catch (error) {
+            console.error("Description update error:", error);
+        }
+    };
+
+    const handleTitleUpdate = async () => {
+        if (!title.trim()) return;
+        try {
+            const response = await fetch(`/api/tasks/${task.TaskID}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ title }),
+            });
+
+            if (response.ok) {
+                setIsEditingTitle(false);
+                router.refresh();
+                fetchHistory();
+            } else {
+                const data = await response.json();
+                Swal.fire({
+                    title: "Error",
+                    text: data.error || "Failed to update title",
+                    icon: "error",
+                    customClass: {
+                        popup: "rounded-[2rem] border-none shadow-2xl",
+                        confirmButton: "rounded-xl font-bold px-6"
+                    }
+                });
+            }
+        } catch (error) {
+            console.error("Title update error:", error);
         }
     };
 
@@ -276,7 +377,40 @@ export function TaskDetailSidebar({ task, isOpen, onClose, isAdmin = false }: Ta
                 <div className="flex-1 overflow-y-auto p-8 space-y-10 scrollbar-hide">
                     {/* Title & Status */}
                     <div className="space-y-6">
-                        <h2 className="text-3xl font-black tracking-tight leading-tight">{task.Title}</h2>
+                        {isEditingTitle ? (
+                            <div className="space-y-3">
+                                <input
+                                    type="text"
+                                    className="w-full text-3xl font-black tracking-tight leading-tight bg-muted/20 p-2 rounded-xl border border-primary/20 outline-none focus:ring-4 focus:ring-primary/10 transition-all"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    autoFocus
+                                    onBlur={handleTitleUpdate}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleTitleUpdate();
+                                        if (e.key === 'Escape') {
+                                            setTitle(task.Title);
+                                            setIsEditingTitle(false);
+                                        }
+                                    }}
+                                />
+                                <div className="flex gap-2">
+                                    <Button size="sm" className="h-7 rounded-lg text-[10px] font-bold" onClick={handleTitleUpdate}>Save</Button>
+                                    <Button size="sm" variant="ghost" className="h-7 rounded-lg text-[10px] font-bold" onClick={() => { setTitle(task.Title); setIsEditingTitle(false); }}>Cancel</Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <h2
+                                className={cn(
+                                    "text-3xl font-black tracking-tight leading-tight group flex items-center gap-2",
+                                    isAdmin && "cursor-pointer hover:text-primary transition-colors"
+                                )}
+                                onClick={() => isAdmin && setIsEditingTitle(true)}
+                            >
+                                {task.Title}
+                                {isAdmin && <Plus className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity rotate-45" />}
+                            </h2>
+                        )}
 
                         <div className="flex flex-wrap gap-4">
                             <div className="space-y-1.5 flex-1 min-w-[200px]">
@@ -284,26 +418,40 @@ export function TaskDetailSidebar({ task, isOpen, onClose, isAdmin = false }: Ta
                                     <Activity className="h-3 w-3" /> Status
                                 </label>
                                 <select
-                                    className="w-full bg-muted/30 border border-border/50 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all"
+                                    className="w-full bg-muted/30 border border-border/50 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                                     defaultValue={task.Status || "Pending"}
                                     onChange={(e) => handleStatusUpdate(e.target.value)}
+                                    disabled={!isAdmin}
                                 >
                                     <option value="Pending">Pending</option>
                                     <option value="In Progress">In Progress</option>
                                     <option value="Completed">Completed</option>
                                 </select>
+                                {!isAdmin && <p className="text-[10px] text-muted-foreground italic mt-1">Read-only for project members</p>}
                             </div>
                             <div className="space-y-1.5 flex-1 min-w-[200px]">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
                                     <Tag className="h-3 w-3" /> Priority
                                 </label>
-                                <div className={cn(
-                                    "px-4 py-2 rounded-xl text-sm font-bold border flex items-center justify-center gap-2",
-                                    task.Priority === "High" ? "bg-red-50 border-red-100 text-red-600" : "bg-blue-50 border-blue-100 text-blue-600"
-                                )}>
-                                    <div className="h-2 w-2 rounded-full bg-current" />
-                                    {task.Priority || "Medium"}
-                                </div>
+                                {isAdmin ? (
+                                    <select
+                                        className="w-full bg-muted/30 border border-border/50 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-4 focus:ring-primary/10 transition-all"
+                                        defaultValue={task.Priority || "Medium"}
+                                        onChange={(e) => handlePriorityUpdate(e.target.value)}
+                                    >
+                                        <option value="Low">Low</option>
+                                        <option value="Medium">Medium</option>
+                                        <option value="High">High</option>
+                                    </select>
+                                ) : (
+                                    <div className={cn(
+                                        "px-4 py-2 rounded-xl text-sm font-bold border flex items-center justify-center gap-2",
+                                        task.Priority === "High" ? "bg-red-50 border-red-100 text-red-600" : "bg-blue-50 border-blue-100 text-blue-600"
+                                    )}>
+                                        <div className="h-2 w-2 rounded-full bg-current" />
+                                        {task.Priority || "Medium"}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -325,52 +473,77 @@ export function TaskDetailSidebar({ task, isOpen, onClose, isAdmin = false }: Ta
                                 <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-muted-foreground border border-border/50">
                                     <Calendar className="h-4 w-4" />
                                 </div>
-                                <span className="text-sm font-bold">
-                                    {task.DueDate ? new Date(task.DueDate).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' }) : "No due date"}
-                                </span>
+                                {isAdmin ? (
+                                    <input
+                                        type="date"
+                                        className="bg-transparent text-sm font-bold outline-none border-b border-transparent hover:border-border focus:border-primary transition-all cursor-pointer"
+                                        defaultValue={task.DueDate ? new Date(task.DueDate).toISOString().split('T')[0] : ""}
+                                        onChange={(e) => handleDueDateUpdate(e.target.value)}
+                                        min={new Date().toISOString().split('T')[0]}
+                                    />
+                                ) : (
+                                    <span className="text-sm font-bold" suppressHydrationWarning>
+                                        {task.DueDate ? new Date(task.DueDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : "No due date"}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
 
                     {/* Description */}
                     <div className="space-y-3">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Description</p>
-                        <p className="text-sm leading-relaxed text-muted-foreground font-medium bg-muted/20 p-4 rounded-2xl border border-dashed">
-                            {task.Description || "No description provided. Click to add more details about this task."}
-                        </p>
-                    </div>
-
-                    {/* Attachments */}
-                    <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Attachments ({attachments.length})</p>
-                            <label className="cursor-pointer">
-                                <input type="file" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
-                                <div className="flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">
-                                    <Plus className="h-3.5 w-3.5" />
-                                    {isUploading ? "Uploading..." : "Add File"}
-                                </div>
-                            </label>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            {attachments.map((file) => (
-                                <a
-                                    key={file.AttachmentID}
-                                    href={file.FilePath}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-3 p-3 rounded-xl border bg-muted/20 hover:bg-muted/40 transition-all group"
+                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Description</p>
+                            {isAdmin && !isEditingDescription && (
+                                <button
+                                    onClick={() => setIsEditingDescription(true)}
+                                    className="text-[10px] font-black uppercase text-primary hover:underline"
                                 >
-                                    <div className="h-8 w-8 rounded-lg bg-background flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
-                                        <Paperclip className="h-4 w-4" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-bold truncate">{file.FileName}</p>
-                                        <p className="text-[8px] font-black uppercase text-muted-foreground/60">{(file.FileSize / 1024).toFixed(1)} KB</p>
-                                    </div>
-                                </a>
-                            ))}
+                                    Edit
+                                </button>
+                            )}
                         </div>
+                        {isEditingDescription ? (
+                            <div className="space-y-3">
+                                <textarea
+                                    className="w-full h-32 text-sm leading-relaxed text-foreground font-medium bg-muted/20 p-4 rounded-2xl border border-primary/20 outline-none focus:ring-4 focus:ring-primary/10 transition-all resize-none"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder="Add task description..."
+                                    autoFocus
+                                />
+                                <div className="flex gap-2">
+                                    <Button
+                                        size="sm"
+                                        className="h-8 rounded-lg text-xs font-bold"
+                                        onClick={handleDescriptionUpdate}
+                                    >
+                                        Save Changes
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-8 rounded-lg text-xs font-bold"
+                                        onClick={() => {
+                                            setDescription(task.Description || "");
+                                            setIsEditingDescription(false);
+                                        }}
+                                    >
+                                        Cancel
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <p
+                                className={cn(
+                                    "text-sm leading-relaxed font-medium bg-muted/20 p-4 rounded-2xl border border-dashed",
+                                    task.Description ? "text-foreground" : "text-muted-foreground"
+                                )}
+                                onClick={() => isAdmin && setIsEditingDescription(true)}
+                            >
+                                {task.Description || "No description provided."}
+                            </p>
+                        )}
                     </div>
 
                     {/* Comments */}
@@ -388,8 +561,8 @@ export function TaskDetailSidebar({ task, isOpen, onClose, isAdmin = false }: Ta
                                             </div>
                                             <span className="text-xs font-bold">{c.users?.UserName}</span>
                                         </div>
-                                        <span className="text-[10px] text-muted-foreground font-medium">
-                                            {new Date(c.CreatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                        <span className="text-[10px] text-muted-foreground font-medium" suppressHydrationWarning>
+                                            {new Date(c.CreatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                         </span>
                                     </div>
                                     <p className="text-sm font-medium text-muted-foreground">{c.CommentText}</p>

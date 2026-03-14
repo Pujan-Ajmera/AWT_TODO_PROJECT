@@ -11,6 +11,7 @@ model projects {
   ProjectID   Int         @id @default(autoincrement())
   ProjectName String      @db.VarChar(100)
   Description String?     @db.VarChar(255)
+  CompletionDate DateTime? @db.Date
   CreatedBy   Int?
   CreatedAt   DateTime?   @default(now()) @db.DateTime(0)
   users       users?      @relation(fields: [CreatedBy], references: [UserID], onDelete: NoAction, onUpdate: NoAction, map: "projects_ibfk_1")

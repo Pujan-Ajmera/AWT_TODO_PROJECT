@@ -176,7 +176,7 @@ export async function DashboardView({ user, q, isAdmin }: DashboardViewProps) {
                                                 </span>
                                                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                                                     <Calendar className="h-3 w-3" />
-                                                    {task.DueDate ? new Date(task.DueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : "Someday"}
+                                                    {task.DueDate ? new Date(task.DueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : "-"}
                                                 </span>
                                             </div>
                                         </div>

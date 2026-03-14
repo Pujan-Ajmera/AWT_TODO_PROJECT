@@ -7,6 +7,7 @@ import { handleApiError, ApiError } from "@/lib/api-utils";
 const projectSchema = z.object({
     name: z.string().min(1, "Project name is required"),
     description: z.string().optional(),
+    completionDate: z.string().min(1, "Project completion date is mandatory"),
 });
 
 export async function GET() {
@@ -101,7 +102,14 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { name, description } = projectSchema.parse(body);
+        const { name, description, completionDate } = projectSchema.parse(body);
+
+        const projectDate = new Date(completionDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (projectDate < today) {
+            throw new ApiError("Project completion date must be in the future", 400);
+        }
 
         // Create project and a default task list in a transaction
         const project = await prisma.$transaction(async (tx) => {
@@ -109,6 +117,7 @@ export async function POST(request: Request) {
                 data: {
                     ProjectName: name,
                     Description: description,
+                    CompletionDate: completionDate ? new Date(completionDate) : null,
                     CreatedBy: user.userId,
                 }
             });

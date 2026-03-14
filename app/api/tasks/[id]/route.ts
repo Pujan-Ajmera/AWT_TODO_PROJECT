@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { handleApiError, ApiError } from "@/lib/api-utils";
+import { z } from "zod";
 
 export async function GET(
     request: Request,
@@ -64,8 +65,52 @@ export async function PATCH(
 
         const { id } = await params;
         const taskId = parseInt(id);
+
+        // Check if user is admin
+        const userRoles = await prisma.userroles.findMany({
+            where: { UserID: user.userId },
+            include: { roles: true }
+        });
+        const isAdmin = userRoles.some(ur => ur.roles?.RoleName === "Admin");
+
+        if (!isAdmin) {
+            throw new ApiError("Forbidden: Only admins can update tasks", 403);
+        }
+
+        const taskSchema = z.object({
+            title: z.string().min(1, "Title is required").optional(),
+            description: z.string().optional(),
+            priority: z.enum(["Low", "Medium", "High"]).optional(),
+            status: z.enum(["Pending", "In Progress", "Completed"]).optional(),
+            dueDate: z.string().min(1, "Due date is mandatory").optional(), // Optional on update, but if provided must be non-empty. Wait, if it's already mandatory on create, we should keep it.
+            listId: z.number().int().positive().optional(),
+        });
+
         const body = await request.json();
-        const { title, description, priority, status, dueDate, listId } = body;
+        const validatedData = taskSchema.parse(body);
+        const { title, description, priority, status, dueDate, listId } = validatedData;
+
+        // Validate Due Date against Project Completion Date
+        if (dueDate) {
+            const currentTask = await prisma.tasks.findUnique({
+                where: { TaskID: taskId },
+                include: {
+                    tasklists: {
+                        include: { projects: true }
+                    }
+                }
+            });
+
+            const project = currentTask?.tasklists?.projects;
+            if (project?.CompletionDate) {
+                const projectDueDate = new Date(project.CompletionDate);
+                const taskDueDate = new Date(dueDate);
+
+                if (taskDueDate > projectDueDate) {
+                    throw new ApiError(`Task due date cannot be later than project completion date (${projectDueDate.toLocaleDateString()})`, 400);
+                }
+            }
+        }
 
         const updatedTask = await prisma.tasks.update({
             where: { TaskID: taskId },
@@ -75,23 +120,31 @@ export async function PATCH(
                 Priority: priority,
                 Status: status,
                 DueDate: dueDate ? new Date(dueDate) : undefined,
-                ListID: listId ? parseInt(listId) : undefined,
+                ListID: listId || undefined,
             }
         });
-        if (status) {
-            await prisma.taskhistory.create({
-                data: {
+
+        // Activity Logging
+        const activities = [];
+        if (status) activities.push(`Status updated to ${status}`);
+        if (title) activities.push(`Title updated to "${title}"`);
+        if (priority) activities.push(`Priority updated to ${priority}`);
+        if (description) activities.push(`Description updated`);
+        if (dueDate) activities.push(`Due date updated to ${new Date(dueDate).toLocaleDateString()}`);
+
+        if (activities.length > 0) {
+            await prisma.taskhistory.createMany({
+                data: activities.map(changeType => ({
                     TaskID: taskId,
                     ChangedBy: user.userId,
-                    ChangeType: `Status updated to ${status}`,
-                }
+                    ChangeType: changeType,
+                }))
             });
         }
 
         return NextResponse.json(updatedTask);
     } catch (error) {
-        console.error("PATCH task error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return handleApiError(error);
     }
 }
 
@@ -106,13 +159,26 @@ export async function DELETE(
         const { id } = await params;
         const taskId = parseInt(id);
 
-        await prisma.tasks.delete({
-            where: { TaskID: taskId }
+        // Check if user is admin
+        const userRoles = await prisma.userroles.findMany({
+            where: { UserID: user.userId },
+            include: { roles: true }
         });
+        const isAdmin = userRoles.some(ur => ur.roles?.RoleName === "Admin");
+
+        if (!isAdmin) {
+            throw new ApiError("Forbidden: Only admins can delete tasks", 403);
+        }
+
+        await prisma.$transaction([
+            prisma.taskcomments.deleteMany({ where: { TaskID: taskId } }),
+            prisma.taskhistory.deleteMany({ where: { TaskID: taskId } }),
+            prisma.taskattachments.deleteMany({ where: { TaskID: taskId } }),
+            prisma.tasks.delete({ where: { TaskID: taskId } })
+        ]);
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("DELETE task error:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        return handleApiError(error);
     }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Send, Loader2, Layout } from "lucide-react";
+import { Plus, Send, Loader2, Layout, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,8 @@ export function QuickCreateTask() {
     const [error, setError] = useState<string | null>(null);
     const [projects, setProjects] = useState<Project[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<string>("");
+    const [dueDate, setDueDate] = useState<string>("");
+    const [description, setDescription] = useState("");
 
     useEffect(() => {
         const fetchProjects = async () => {
@@ -57,6 +59,8 @@ export function QuickCreateTask() {
                 body: JSON.stringify({
                     title,
                     projectId: selectedProjectId ? parseInt(selectedProjectId) : undefined,
+                    dueDate: dueDate || undefined,
+                    description: description || undefined,
                 }),
             });
 
@@ -65,6 +69,8 @@ export function QuickCreateTask() {
                 console.log("Task created successfully:", data);
                 setTitle("");
                 setSelectedProjectId("");
+                setDueDate("");
+                setDescription("");
                 setIsExpanded(false);
                 // Refresh the page or trigger a data re-fetch
                 window.location.reload();
@@ -117,6 +123,16 @@ export function QuickCreateTask() {
                         />
                     </div>
 
+                    <div className="flex items-start gap-3 px-1">
+                        <textarea
+                            placeholder="Add description..."
+                            className="flex-1 bg-transparent py-1 text-xs font-medium outline-none placeholder:text-muted-foreground resize-none h-12 border-b border-transparent focus:border-muted/30 transition-all"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            disabled={isLoading}
+                        />
+                    </div>
+
                     <div className="flex items-center gap-4 px-1">
                         <div className="flex items-center gap-2 flex-1">
                             <Layout className="h-4 w-4 text-muted-foreground" />
@@ -126,7 +142,7 @@ export function QuickCreateTask() {
                                 onChange={(e) => setSelectedProjectId(e.target.value)}
                                 disabled={isLoading}
                             >
-                                <option value="" disabled>Select a Project</option>
+                                <option value="" disabled>Project *</option>
                                 {projects.map((project) => (
                                     <option key={project.ProjectID} value={project.ProjectID}>
                                         {project.ProjectName}
@@ -138,29 +154,41 @@ export function QuickCreateTask() {
                             </select>
                         </div>
 
+                        <div className="flex items-center gap-2 flex-1 relative group">
+                            <Calendar className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                            <input
+                                type="date"
+                                title="Due Date (Required)"
+                                className="flex-1 bg-transparent text-xs font-bold outline-none border-none focus:ring-0 cursor-pointer"
+                                value={dueDate}
+                                onChange={(e) => setDueDate(e.target.value)}
+                                disabled={isLoading}
+                                required
+                                min={new Date().toISOString().split('T')[0]}
+                            />
+                        </div>
+
                         <div className="flex items-center justify-end gap-2">
                             <Button
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => {
-                                    setIsExpanded(false);
-                                    setTitle("");
-                                    setSelectedProjectId("");
-                                }}
+                                onClick={() => setIsExpanded(false)}
+                                className="h-8 rounded-lg text-xs"
                                 disabled={isLoading}
-                                className="rounded-full"
                             >
                                 Cancel
                             </Button>
                             <Button
                                 type="submit"
                                 size="sm"
-                                disabled={!title.trim() || !selectedProjectId || isLoading}
-                                className="rounded-full gap-2 px-4 shadow-lg shadow-primary/20"
+                                className="h-8 rounded-lg text-xs"
+                                disabled={!title.trim() || !selectedProjectId || !dueDate || isLoading}
                             >
-                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                                Create Task
+                                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    Add Task
+                                </>}
                             </Button>
                         </div>
                     </div>

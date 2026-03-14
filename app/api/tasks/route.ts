@@ -9,8 +9,8 @@ const taskSchema = z.object({
     description: z.string().optional(),
     priority: z.enum(["Low", "Medium", "High"]).optional(),
     listId: z.number().optional(),
-    projectId: z.number().optional(),
-    dueDate: z.string().optional().nullable(),
+    projectId: z.number().min(1, "Project selection is mandatory"),
+    dueDate: z.string().min(1, "Due date is mandatory"),
 });
 
 export async function GET(request: Request) {
@@ -59,6 +59,9 @@ export async function GET(request: Request) {
                 tasklists: true,
                 users: {
                     select: { UserName: true }
+                },
+                _count: {
+                    select: { taskcomments: true }
                 }
             },
             orderBy: { CreatedAt: 'desc' }
@@ -76,8 +79,18 @@ export async function POST(request: Request) {
         if (!user) throw new ApiError("Unauthorized", 401);
 
         const body = await request.json();
-        const data = taskSchema.parse(body);
+        const validatedData = taskSchema.parse(body);
+        const { title, description, priority, projectId, dueDate } = validatedData;
 
+        // Block past dates for creation
+        if (dueDate) {
+            const taskDate = new Date(dueDate);
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            if (taskDate < now) {
+                return NextResponse.json({ error: "Due date cannot be in the past" }, { status: 400 });
+            }
+        }
         // Check if user is admin
         const userRoles = await prisma.userroles.findMany({
             where: { UserID: user.userId },
@@ -89,19 +102,19 @@ export async function POST(request: Request) {
             throw new ApiError("Forbidden: Only admins can create tasks", 403);
         }
 
-        let listId = data.listId;
+        let listId = validatedData.listId;
 
-        if (!listId && data.projectId) {
+        if (!listId && validatedData.projectId) {
             const generalList = await prisma.tasklists.findFirst({
                 where: {
-                    ProjectID: data.projectId,
+                    ProjectID: validatedData.projectId,
                     ListName: "General"
                 }
             });
 
             if (!generalList) {
                 const firstList = await prisma.tasklists.findFirst({
-                    where: { ProjectID: data.projectId }
+                    where: { ProjectID: validatedData.projectId }
                 });
                 if (!firstList) throw new ApiError("This project has no task lists", 400);
                 listId = firstList.ListID;
@@ -114,15 +127,32 @@ export async function POST(request: Request) {
             throw new ApiError("Project or List selection is required", 400);
         }
 
+        // Validate Due Date against Project Completion Date
+        if (validatedData.dueDate) {
+            const list = await prisma.tasklists.findUnique({
+                where: { ListID: listId },
+                include: { projects: true }
+            });
+
+            if (list?.projects?.CompletionDate) {
+                const projectDueDate = new Date(list.projects.CompletionDate);
+                const taskDueDate = new Date(validatedData.dueDate);
+
+                if (taskDueDate > projectDueDate) {
+                    throw new ApiError(`Task due date cannot be later than project completion date (${projectDueDate.toLocaleDateString()})`, 400);
+                }
+            }
+        }
+
         const task = await prisma.tasks.create({
             data: {
-                Title: data.title,
-                Description: data.description,
-                Priority: data.priority || "Medium",
+                Title: validatedData.title,
+                Description: validatedData.description,
+                Priority: validatedData.priority || "Medium",
                 Status: "Pending",
                 ListID: listId,
                 AssignedTo: user.userId,
-                DueDate: data.dueDate ? new Date(data.dueDate) : null,
+                DueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
             }
         });
 

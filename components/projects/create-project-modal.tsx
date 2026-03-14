@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
-import { createProjectAction } from "@/app/actions/projects";
 import { Loader2, Layout } from "lucide-react";
 
 interface CreateProjectModalProps {
@@ -14,13 +13,29 @@ interface CreateProjectModalProps {
 export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps) {
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
+    const [completionDate, setCompletionDate] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-
     const [error, setError] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim()) return;
+        if (!name.trim()) {
+            setError("Project name is required");
+            return;
+        }
+
+        if (!completionDate) {
+            setError("Completion date is mandatory");
+            return;
+        }
+
+        const projectDate = new Date(completionDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (projectDate < today) {
+            setError("Completion date must be in the future");
+            return;
+        }
 
         setIsLoading(true);
         setError(null);
@@ -33,14 +48,15 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                 body: JSON.stringify({
                     name,
                     description,
+                    completionDate,
                 }),
             });
 
             if (response.ok) {
                 setName("");
                 setDescription("");
+                setCompletionDate("");
                 onClose();
-                // We might need to refresh the page or trigger a state update
                 window.location.reload();
             } else {
                 const data = await response.json();
@@ -94,6 +110,19 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                             disabled={isLoading}
                         />
                     </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Completion Date *</label>
+                        <input
+                            type="date"
+                            className="w-full h-12 rounded-2xl border bg-muted/30 px-4 text-sm font-bold outline-none focus:bg-background focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer"
+                            value={completionDate}
+                            onChange={(e) => setCompletionDate(e.target.value)}
+                            disabled={isLoading}
+                            required
+                            min={new Date().toISOString().split('T')[0]}
+                        />
+                    </div>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-2">
@@ -102,14 +131,14 @@ export function CreateProjectModal({ isOpen, onClose }: CreateProjectModalProps)
                         variant="ghost"
                         onClick={onClose}
                         disabled={isLoading}
-                        className="rounded-full px-6"
+                        className="rounded-xl"
                     >
                         Cancel
                     </Button>
                     <Button
                         type="submit"
-                        disabled={!name.trim() || isLoading}
-                        className="rounded-full px-8 shadow-lg shadow-primary/20"
+                        disabled={!name.trim() || !completionDate || isLoading}
+                        className="rounded-xl px-8 shadow-lg shadow-primary/20"
                     >
                         {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                         Create Project

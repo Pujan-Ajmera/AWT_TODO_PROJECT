@@ -13,6 +13,10 @@ export function TaskSearchInput({ initialValue = "" }: { initialValue?: string }
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
+        const currentQ = params.get("q") || "";
+        
+        if (debouncedValue === currentQ) return;
+
         if (debouncedValue) {
             params.set("q", debouncedValue);
         } else {
